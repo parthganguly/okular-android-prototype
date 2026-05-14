@@ -10,8 +10,10 @@
 #include <QImage>
 #include <QPointer>
 #include <QQuickItem>
+#include <QSize>
 #include <qqmlregistration.h>
 
+#include <core/area.h>
 #include <core/document.h>
 #include <core/view.h>
 
@@ -56,6 +58,16 @@ class PageItem : public QQuickItem, public Okular::View
     Q_PROPERTY(int implicitHeight READ implicitHeight NOTIFY implicitHeightChanged)
 
     /**
+     * Natural aspect ratio of the visible page area after optional margin trimming.
+     */
+    Q_PROPERTY(qreal cropRatio READ cropRatio NOTIFY cropRatioChanged)
+
+    /**
+     * Trim empty page margins using Okular's computed page bounding box.
+     */
+    Q_PROPERTY(bool trimMargins READ trimMargins WRITE setTrimMargins NOTIFY trimMarginsChanged)
+
+    /**
      * True if the page contains at least a bookmark.
      * Writing true to tis property idds a bookmark at the beginning of the page (if needed).
      * Writing false, all bookmarks for this page will be removed
@@ -76,6 +88,9 @@ public:
 
     int implicitWidth() const;
     int implicitHeight() const;
+    qreal cropRatio() const;
+    bool trimMargins() const;
+    void setTrimMargins(bool trimMargins);
 
     DocumentItem *document() const;
     void setDocument(DocumentItem *doc);
@@ -87,7 +102,7 @@ public:
     void setBookmarked(bool bookmarked);
 
     QStringList bookmarks() const;
-    void requestPixmap();
+    Q_INVOKABLE void requestPixmap();
 
     /**
      * loads a page bookmark and tries to ensure the bookmarked position is visible
@@ -126,6 +141,8 @@ Q_SIGNALS:
     void flickableChanged();
     void documentChanged();
     void pageNumberChanged();
+    void cropRatioChanged();
+    void trimMarginsChanged();
     void bookmarkedChanged();
     void bookmarksChanged();
 
@@ -141,10 +158,15 @@ private Q_SLOTS:
 private:
     void paint();
     void refreshPage();
+    bool hasRenderablePixmap() const;
+    void clearBuffer();
+    Okular::NormalizedRect effectiveCrop() const;
+    QSize scaledUncroppedSize(const Okular::NormalizedRect &crop) const;
 
     const Okular::Page *m_page;
     bool m_bookmarked;
     bool m_isThumbnail;
+    bool m_trimMargins;
     QPointer<DocumentItem> m_documentItem;
     QTimer *m_redrawTimer;
     QPointer<QQuickItem> m_flickable;

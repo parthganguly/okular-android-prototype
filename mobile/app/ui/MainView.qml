@@ -16,25 +16,52 @@ Kirigami.Page {
 
     property alias document: pageArea.document
     property alias page: pageArea.page
+    readonly property bool chromeVisible: document.opened && applicationWindow().controlsVisible
+    readonly property bool compactControls: width < Kirigami.Units.gridUnit * 36
+    readonly property real toolbarContentHeight: Math.max(40, Math.min(46, Kirigami.Units.gridUnit * 2.35))
+
+    function revealControls() {
+        if (!document.opened) {
+            return
+        }
+        applicationWindow().controlsVisible = true
+        autoHideControls.restart()
+    }
+
+    function hideControls() {
+        autoHideControls.stop()
+        applicationWindow().controlsVisible = false
+    }
+
+    function keepControlsWarm() {
+        if (root.chromeVisible) {
+            autoHideControls.restart()
+        }
+    }
+
     leftPadding: 0
     topPadding: 0
     rightPadding: 0
     bottomPadding: 0
-
-    actions: Kirigami.Action {
-        icon.name: pageArea.page.bookmarked ? "bookmark-remove" : "bookmarks-organize"
-        checkable: true
-        visible: document.opened
-        onCheckedChanged: (checked) => pageArea.page.bookmarked = checked
-        text: pageArea.page.bookmarked ? i18n("Remove bookmark") : i18n("Bookmark this page")
-        checked: pageArea.page.bookmarked
+    background: Rectangle {
+        color: document.opened ? "#111316" : Kirigami.Theme.backgroundColor
     }
 
     Okular.DocumentView {
         id: pageArea
-        anchors.fill: parent
+        fitMode: fileBrowserRoot.readerFitMode
+        continuousMode: fileBrowserRoot.readerContinuousMode
+        anchors {
+            fill: parent
+        }
 
-        onClicked: fileBrowserRoot.controlsVisible = !fileBrowserRoot.controlsVisible
+        onClicked: {
+            if (root.chromeVisible) {
+                root.hideControls()
+            } else {
+                root.revealControls()
+            }
+        }
         onUrlOpened: welcomeView.saveRecentDocument(document.url)
     }
 
@@ -85,16 +112,202 @@ Kirigami.Page {
         id: welcomeView
     }
 
-    QQC2.ProgressBar {
-        id: bar
+    Timer {
+        id: autoHideControls
+        interval: 3600
+        repeat: false
+        onTriggered: {
+            if (!contextDrawer.drawerOpen) {
+                applicationWindow().controlsVisible = false
+            }
+        }
+    }
+
+    Connections {
+        target: contextDrawer
+
+        function onDrawerOpenChanged() {
+            if (contextDrawer.drawerOpen) {
+                applicationWindow().controlsVisible = true
+                autoHideControls.stop()
+            } else if (root.chromeVisible) {
+                autoHideControls.restart()
+            }
+        }
+    }
+
+    Rectangle {
+        id: readerToolbar
+        z: 100
+        visible: root.chromeVisible
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            topMargin: -fileBrowserRoot.topSystemInset
+        }
+        height: fileBrowserRoot.topSystemInset + root.toolbarContentHeight
+        color: Qt.rgba(0.10, 0.11, 0.12, 0.91)
+        Kirigami.Theme.inherit: false
+        Kirigami.Theme.colorSet: Kirigami.Theme.Header
+        Kirigami.Theme.textColor: "#eff0f1"
+        Kirigami.Theme.highlightColor: "#3daee9"
+
+        RowLayout {
+            anchors {
+                fill: parent
+                topMargin: fileBrowserRoot.topSystemInset
+                leftMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
+                rightMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
+                bottomMargin: 0
+            }
+            spacing: Math.max(2, Kirigami.Units.smallSpacing / 2)
+
+            QQC2.ToolButton {
+                icon.name: "document-open"
+                text: i18n("Open")
+                display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
+                icon.color: Kirigami.Theme.textColor
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    openDocumentAction.trigger()
+                }
+            }
+
+            QQC2.Label {
+                text: document.windowTitleForDocument ? document.windowTitleForDocument : i18n("Okular")
+                color: Kirigami.Theme.textColor
+                elide: Text.ElideMiddle
+                Layout.fillWidth: true
+            }
+
+            Rectangle {
+                visible: document.pageCount > 0
+                color: Qt.rgba(1, 1, 1, 0.10)
+                radius: 6
+                Layout.preferredWidth: root.compactControls ? Kirigami.Units.gridUnit * 3.1 : Kirigami.Units.gridUnit * 4.1
+                Layout.preferredHeight: Math.max(28, root.toolbarContentHeight - 10)
+
+                QQC2.Label {
+                    anchors.centerIn: parent
+                    text: i18nc("current page and page count", "%1 / %2", document.currentPage + 1, document.pageCount)
+                    color: Kirigami.Theme.textColor
+                    opacity: 0.86
+                    font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.68))
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
+            QQC2.ToolButton {
+                icon.name: pageArea.page.bookmarked ? "bookmark-remove" : "bookmarks-organize"
+                text: pageArea.page.bookmarked ? i18n("Saved") : i18n("Mark")
+                display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
+                icon.color: Kirigami.Theme.textColor
+                checkable: true
+                checked: pageArea.page.bookmarked
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    pageArea.page.bookmarked = !pageArea.page.bookmarked
+                }
+            }
+
+            QQC2.ToolButton {
+                text: i18n("Crop")
+                display: QQC2.AbstractButton.TextOnly
+                checkable: true
+                checked: pageArea.trimMargins
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    pageArea.trimMargins = checked
+                }
+            }
+
+            QQC2.ToolButton {
+                text: fileBrowserRoot.readerContinuousMode ? i18n("Scroll") : i18n("Flip")
+                display: QQC2.AbstractButton.TextOnly
+                checkable: true
+                checked: fileBrowserRoot.readerContinuousMode
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    fileBrowserRoot.readerContinuousMode = checked
+                    if (checked && fileBrowserRoot.readerFitMode === fileBrowserRoot.fillScreenMode) {
+                        fileBrowserRoot.readerFitMode = fileBrowserRoot.fitWidthMode
+                    }
+                }
+            }
+
+            QQC2.ToolButton {
+                text: pageArea.fitMode === fileBrowserRoot.fitWidthMode ? i18n("Width") : pageArea.fitMode === fileBrowserRoot.fitPageMode ? i18n("Page") : i18n("Fill")
+                display: QQC2.AbstractButton.TextOnly
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    fileBrowserRoot.readerFitMode = (fileBrowserRoot.readerFitMode + 1) % 3
+                }
+            }
+
+            QQC2.ToolButton {
+                icon.name: "view-preview"
+                text: i18n("Nav")
+                display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
+                icon.color: Kirigami.Theme.textColor
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    contextDrawer.drawerOpen = !contextDrawer.drawerOpen
+                    root.keepControlsWarm()
+                }
+            }
+        }
+    }
+
+    Rectangle {
         z: 99
-        visible: applicationWindow().controlsVisible
-        height: Kirigami.Units.smallSpacing
+        visible: readerToolbar.visible
+        anchors {
+            top: readerToolbar.bottom
+            left: parent.left
+            right: parent.right
+        }
+        height: Kirigami.Units.gridUnit
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop {
+                position: 0.0
+                color: Qt.rgba(0, 0, 0, 0.28)
+            }
+            GradientStop {
+                position: 1.0
+                color: "transparent"
+            }
+        }
+    }
+
+    Rectangle {
+        id: progressTrack
+        z: 99
+        visible: document.opened
+        opacity: root.chromeVisible ? 1 : 0.38
+        height: root.chromeVisible ? Math.max(3, Math.round(Kirigami.Units.smallSpacing / 2)) : 2
+        color: Qt.rgba(0.14, 0.15, 0.16, root.chromeVisible ? 0.32 : 0.12)
         anchors {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+            bottomMargin: root.chromeVisible ? fileBrowserRoot.bottomSystemInset : 0
         }
-        value: documentItem.pageCount !== 0 ? ((documentItem.currentPage + 1) / documentItem.pageCount) : 0
+
+        Rectangle {
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: parent.left
+            }
+            width: parent.width * (document.pageCount > 0 ? ((document.currentPage + 1) / document.pageCount) : 0)
+            color: "#3daee9"
+        }
     }
 }

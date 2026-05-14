@@ -46,6 +46,7 @@
 #include <QTimer>
 #include <QUndoCommand>
 #include <QWindow>
+#include <QUrlQuery>
 #include <QtAlgorithms>
 
 #include <KApplicationTrader>
@@ -2303,7 +2304,8 @@ KPluginMetaData DocumentPrivate::generatorForMimeType(const QMimeType &type, QWi
         const QStringList mimetypes = md.mimeTypes();
         for (const QString &supported : mimetypes) {
             QMimeType mimeType = mimeDatabase.mimeTypeForName(supported);
-            if (mimeType == type && !exactMatches.contains(md)) {
+            const bool exactMimeNameMatch = type.name() == supported || type.aliases().contains(supported) || mimeType.name() == type.name() || mimeType.aliases().contains(type.name());
+            if ((mimeType == type || exactMimeNameMatch) && !exactMatches.contains(md)) {
                 exactMatches << md;
             }
 
@@ -2349,10 +2351,90 @@ KPluginMetaData DocumentPrivate::generatorForMimeType(const QMimeType &type, QWi
     return offers.at(hRank);
 }
 
+namespace
+{
+QString comicBookMimeTypeNameForFileName(const QString &fileName)
+{
+    const QString lowerFileName = fileName.toLower();
+
+    if (lowerFileName.endsWith(QLatin1String(".cbz"))) {
+        return QStringLiteral("application/x-cbz");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cbr"))) {
+        return QStringLiteral("application/x-cbr");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cbt"))) {
+        return QStringLiteral("application/x-cbt");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cb7"))) {
+        return QStringLiteral("application/x-cb7");
+    }
+
+    return {};
+}
+
+bool isComicBookMimeTypeName(const QString &mimeTypeName)
+{
+    return mimeTypeName == QLatin1String("application/x-cbz") || mimeTypeName == QLatin1String("application/x-cbr") || mimeTypeName == QLatin1String("application/x-cbt")
+        || mimeTypeName == QLatin1String("application/x-cb7");
+}
+
+QString comicBookMimeTypeNameForUrl(const QUrl &url)
+{
+    const QUrlQuery query(url);
+    const QString hintedMimeTypeName = query.queryItemValue(QStringLiteral("okularMimeType"));
+    if (isComicBookMimeTypeName(hintedMimeTypeName)) {
+        return hintedMimeTypeName;
+    }
+
+    const QStringList fileNameHints = {query.queryItemValue(QStringLiteral("okularFileName")), url.fileName(), url.isLocalFile() ? url.toLocalFile() : QString()};
+    for (const QString &fileName : fileNameHints) {
+        const QString mimeTypeName = comicBookMimeTypeNameForFileName(fileName);
+        if (!mimeTypeName.isEmpty()) {
+            return mimeTypeName;
+        }
+    }
+
+    return {};
+}
+
+KPluginMetaData generatorForDeclaredMimeTypeName(const QString &mimeTypeName, const QList<KPluginMetaData> &triedOffers = QList<KPluginMetaData>())
+{
+    if (mimeTypeName.isEmpty()) {
+        return {};
+    }
+
+    QList<KPluginMetaData> offers;
+    for (const KPluginMetaData &md : DocumentPrivate::availableGenerators()) {
+        if (triedOffers.contains(md)) {
+            continue;
+        }
+
+        if (md.mimeTypes().contains(mimeTypeName)) {
+            offers << md;
+        }
+    }
+
+    if (offers.isEmpty()) {
+        return {};
+    }
+
+    auto cmp = [](const KPluginMetaData &s1, const KPluginMetaData &s2) {
+        const QString property = QStringLiteral("X-KDE-Priority");
+        return s1.rawData().value(property).toInt() > s2.rawData().value(property).toInt();
+    };
+    std::stable_sort(offers.begin(), offers.end(), cmp);
+
+    return offers.constFirst();
+}
+}
+
 Document::OpenResult Document::openDocument(const QString &docFile, const QUrl &url, const QMimeType &_mime, const QString &password)
 {
     QMimeDatabase db;
     QMimeType mime = _mime;
+    const QMimeType requestedMime = mime;
+    const QString requestedComicBookMimeTypeName = comicBookMimeTypeNameForUrl(url);
     QByteArray filedata;
     int fd = -1;
     if (url.scheme() == QLatin1String("fd")) {
@@ -2398,6 +2480,13 @@ Document::OpenResult Document::openDocument(const QString &docFile, const QUrl &
     // 0. load Generator
     // request only valid non-disabled plugins suitable for the mimetype
     KPluginMetaData offer = DocumentPrivate::generatorForMimeType(mime, d->m_widget);
+    if (!offer.isValid() && requestedMime.isValid() && !requestedMime.isDefault() && requestedMime != mime) {
+        mime = requestedMime;
+        offer = DocumentPrivate::generatorForMimeType(mime, d->m_widget);
+    }
+    if (!offer.isValid() && !requestedComicBookMimeTypeName.isEmpty()) {
+        offer = generatorForDeclaredMimeTypeName(requestedComicBookMimeTypeName);
+    }
     if (!offer.isValid() && !triedMimeFromFileContent) {
         QMimeType newmime = db.mimeTypeForFile(docFile, QMimeDatabase::MatchContent);
         triedMimeFromFileContent = true;

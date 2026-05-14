@@ -46,12 +46,15 @@ int main(int argc, char *argv[])
 
 #ifdef __ANDROID__
     URIHandler::handleViewIntent();
-    const QString uri = URIHandler::handler.m_lastUrl;
+    const QString uri = URIHandler::handler.lastUrl();
 #else
     const QString uri = parser.positionalArguments().count() == 1 ? QUrl::fromUserInput(parser.positionalArguments().constFirst(), {}, QUrl::AssumeLocalFile).toString() : QString();
 #endif
     // TODO move away from context property when possible
     engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
+#ifdef __ANDROID__
+    engine.rootContext()->setContextProperty(QStringLiteral("uriHandler"), &URIHandler::handler);
+#endif
     engine.rootContext()->setContextProperty(QStringLiteral("uri"), uri);
 
     engine.loadFromModule(QLatin1StringView("org.kde.okular.app"), QLatin1StringView("Main"));

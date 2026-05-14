@@ -70,7 +70,6 @@ void PagePainter::paintCroppedPageOnPainter(QPainter *destPainter,
     const QRect dScaledCrop(QRectF(scaledCrop.x() * dpr, scaledCrop.y() * dpr, scaledCrop.width() * dpr, scaledCrop.height() * dpr).toAlignedRect());
 
     const int croppedWidth = scaledCrop.width();
-    const int croppedHeight = scaledCrop.height();
 
     const int dScaledWidth = ceil(scaledWidth * dpr);
     const int dScaledHeight = ceil(scaledHeight * dpr);
@@ -111,14 +110,12 @@ void PagePainter::paintCroppedPageOnPainter(QPainter *destPainter,
         const double pixmapRescaleRatio = !pixmap.isNull() ? dScaledWidth / (double)pixmap.width() : -1;
         const long pixmapPixels = !pixmap.isNull() ? (long)pixmap.width() * (long)pixmap.height() : 0;
         if (pixmap.isNull() || pixmapRescaleRatio > 20.0 || pixmapRescaleRatio < 0.25 || (dScaledWidth > pixmap.width() && pixmapPixels > 60000000L)) {
-            // draw something on the blank page: the okular icon or a cross (as a fallback)
+            // draw something on the blank page: the okular icon if it is available.
+            // On Android the icon theme can be unavailable here; a giant fallback X
+            // reads as a broken page during swipes, so leave the page blank instead.
             if (!busyPixmap()->isNull()) {
                 busyPixmap->setDevicePixelRatio(dpr);
                 destPainter->drawPixmap(QPoint(10, 10), *busyPixmap());
-            } else {
-                destPainter->setPen(Qt::gray);
-                destPainter->drawLine(0, 0, croppedWidth - 1, croppedHeight - 1);
-                destPainter->drawLine(0, croppedHeight - 1, croppedWidth - 1, 0);
             }
             return;
         }

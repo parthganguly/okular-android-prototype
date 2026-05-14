@@ -700,7 +700,9 @@ PDFGenerator::PDFGenerator(QObject *parent, const QVariantList &args)
         }
     }
 #if POPPLER_VERSION_MACRO >= QT_VERSION_CHECK(25, 02, 90)
-    Poppler::setPgpSignaturesAllowed(PDFSettings::enablePgp());
+    if (PDFSettings::enablePgp()) {
+        Poppler::setPgpSignaturesAllowed(true);
+    }
 #endif
 }
 

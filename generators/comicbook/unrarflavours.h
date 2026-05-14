@@ -79,4 +79,16 @@ public:
     ProcessArgs processOpenArchiveArgs(const QString &fileName, const QString &path) const override;
 };
 
+class BsdtarFlavour : public UnrarFlavour
+{
+public:
+    BsdtarFlavour();
+
+    QStringList processListing(const QStringList &data) override;
+    QString name() const override;
+
+    ProcessArgs processListArgs(const QString &fileName) const override;
+    ProcessArgs processOpenArchiveArgs(const QString &fileName, const QString &path) const override;
+};
+
 #endif

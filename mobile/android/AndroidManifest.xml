@@ -1,5 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <manifest package="org.kde.okular.kirigami" xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.3.0" android:versionCode="9" android:installLocation="auto">
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
@@ -19,7 +21,50 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:mimeType="application/oxps"/>
+                <data android:mimeType="application/epub+zip"/>
                 <data android:mimeType="application/pdf"/>
+                <data android:mimeType="application/vnd.ms-xpsdocument"/>
+                <data android:mimeType="application/x-cb7"/>
+                <data android:mimeType="application/x-cbr"/>
+                <data android:mimeType="application/x-cbt"/>
+                <data android:mimeType="application/x-cbz"/>
+                <data android:mimeType="application/x-dvi"/>
+                <data android:mimeType="application/x-fictionbook+xml"/>
+                <data android:mimeType="application/x-mobipocket-ebook"/>
+                <data android:mimeType="application/x-pdf"/>
+                <data android:mimeType="application/x-wwf"/>
+                <data android:mimeType="image/avif"/>
+                <data android:mimeType="image/bmp"/>
+                <data android:mimeType="image/fax-g3"/>
+                <data android:mimeType="image/g3fax"/>
+                <data android:mimeType="image/gif"/>
+                <data android:mimeType="image/heif"/>
+                <data android:mimeType="image/jp2"/>
+                <data android:mimeType="image/jpeg"/>
+                <data android:mimeType="image/jxl"/>
+                <data android:mimeType="image/png"/>
+                <data android:mimeType="image/tiff"/>
+                <data android:mimeType="image/vnd.djvu"/>
+                <data android:mimeType="image/webp"/>
+                <data android:mimeType="image/x-dds"/>
+                <data android:mimeType="image/x-exr"/>
+                <data android:mimeType="image/x-hdr"/>
+                <data android:mimeType="image/x-ico"/>
+                <data android:mimeType="image/x-pcx"/>
+                <data android:mimeType="image/x-portable-bitmap"/>
+                <data android:mimeType="image/x-portable-graymap"/>
+                <data android:mimeType="image/x-portable-pixmap"/>
+                <data android:mimeType="image/x-psd"/>
+                <data android:mimeType="image/x-rgb"/>
+                <data android:mimeType="image/x-tga"/>
+                <data android:mimeType="image/x-xbitmap"/>
+                <data android:mimeType="image/x-xcf"/>
+                <data android:mimeType="image/x-xpixmap"/>
+                <data android:mimeType="text/markdown"/>
+                <data android:mimeType="text/plain"/>
+                <data android:mimeType="text/x-markdown"/>
+                <data android:mimeType="video/x-mng"/>
             </intent-filter>
 
             <meta-data android:name="android.app.lib_name" android:value="okularkirigami"/>

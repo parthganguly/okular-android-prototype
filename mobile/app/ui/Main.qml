@@ -17,9 +17,20 @@ Kirigami.ApplicationWindow {
     id: fileBrowserRoot
 
     readonly property int columnWidth: Kirigami.Units.gridUnit * 13
+    readonly property int fitWidthMode: 0
+    readonly property int fitPageMode: 1
+    readonly property int fillScreenMode: 2
+    property int readerFitMode: fitWidthMode
+    property bool readerContinuousMode: true
+    readonly property real topSystemInset: typeof uriHandler !== "undefined" ? uriHandler.statusBarHeight() : 0
+    readonly property real bottomSystemInset: typeof uriHandler !== "undefined" ? uriHandler.navigationBarHeight() : 0
 
     wideScreen: width > columnWidth * 5
     visible: true
+    controlsVisible: false
+
+    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+    pageStack.separatorVisible: false
 
     globalDrawer: Kirigami.GlobalDrawer {
         title: i18n("Okular")
@@ -59,14 +70,46 @@ Kirigami.ApplicationWindow {
         modal: !fileBrowserRoot.wideScreen
         onModalChanged: drawerOpen = !modal
         onEnabledChanged: drawerOpen = enabled && !modal
+        onDrawerOpenChanged: fileBrowserRoot.updateReaderMode()
         enabled: documentItem.opened && pageStack.layers.depth < 2
         handleVisible: enabled && pageStack.layers.depth < 2
     }
 
     title: documentItem.windowTitleForDocument ? documentItem.windowTitleForDocument : i18n("Okular")
+
+    onControlsVisibleChanged: updateReaderMode()
+
+    function readerDefaultFitMode(openedUrl) {
+        const lowerUrl = decodeURIComponent(openedUrl.toString()).toLowerCase()
+        const visualExtensions = [".cb7", ".cbr", ".cbt", ".cbz", ".avif", ".bmp", ".gif", ".heif", ".jpeg", ".jpg", ".jp2", ".jxl", ".png", ".tif", ".tiff", ".webp"]
+        for (let i = 0; i < visualExtensions.length; ++i) {
+            if (lowerUrl.indexOf(visualExtensions[i]) !== -1) {
+                return fillScreenMode
+            }
+        }
+        return fitWidthMode
+    }
+
+    function updateReaderMode() {
+        if (typeof uriHandler !== "undefined") {
+            uriHandler.setReaderMode(documentItem.opened)
+        }
+    }
+
     Okular.DocumentItem {
         id: documentItem
-        onUrlChanged: { currentPage = 0 }
+        onUrlChanged: {
+            currentPage = 0
+            fileBrowserRoot.controlsVisible = false
+            fileBrowserRoot.readerFitMode = fileBrowserRoot.readerDefaultFitMode(url)
+            if (fileBrowserRoot.readerContinuousMode && fileBrowserRoot.readerFitMode === fileBrowserRoot.fillScreenMode) {
+                fileBrowserRoot.readerFitMode = fileBrowserRoot.fitWidthMode
+            }
+            fileBrowserRoot.updateReaderMode()
+        }
+        onOpenedChanged: {
+            fileBrowserRoot.updateReaderMode()
+        }
 
         onNeedsPasswordChanged: {
             if (needsPassword) {
@@ -81,13 +124,20 @@ Kirigami.ApplicationWindow {
         Kirigami.ColumnView.preventStealing: true
     }
 
-    //FIXME: this is due to global vars being bound after the parse is done, do the 2 steps parsing
-    Timer {
-        interval: 100
-        running: true
-        onTriggered: {
-            if (uri) {
-                documentItem.url = uri
+    function openInitialUri() {
+        const initialUri = typeof uriHandler !== "undefined" ? uriHandler.lastUrl : uri
+        if (initialUri) {
+            documentItem.url = initialUri
+        }
+    }
+
+    Component.onCompleted: openInitialUri()
+
+    Connections {
+        target: typeof uriHandler !== "undefined" ? uriHandler : null
+        function onOpenRequested(openedUri) {
+            if (openedUri) {
+                documentItem.url = openedUri
             }
         }
     }

@@ -34,7 +34,7 @@ include(ECMSetupQtPluginMacroNames)
 include(ECMAddAndroidApk)
 
 if (ANDROID AND (FORCE_NOT_REQUIRED_DEPENDENCIES STREQUAL ""))
-    set(FORCE_NOT_REQUIRED_DEPENDENCIES "KF6Wallet;KF6DocTools;Qt6Qml;TIFF;LibSpectre;KExiv2Qt6;DjVuLibre;EPub;Discount;")
+    set(FORCE_NOT_REQUIRED_DEPENDENCIES "KF6Wallet;KF6DocTools;Qt6Qml;TIFF;LibSpectre;KExiv2Qt6;DjVuLibre;EPub;Discount;Phonon4Qt6;")
 endif()
 
 function(set_okular_optional_package_properties _name _props)
@@ -177,7 +177,7 @@ if (BUILD_DESKTOP)
 endif()
 
 if (BUILD_MOBILE)
-    find_package(Qt6 ${QT_REQUIRED_VERSION} CONFIG REQUIRED COMPONENTS Qml Quick)
+    find_package(Qt6 ${QT_REQUIRED_VERSION} CONFIG REQUIRED COMPONENTS Qml Quick QuickControls2)
     find_package(KF6Kirigami2)
     set_package_properties(KF6Kirigami2 PROPERTIES
         DESCRIPTION "A QtQuick based components set"
@@ -417,11 +417,20 @@ generate_export_header(okularcore BASE_NAME okularcore EXPORT_FILE_NAME "${CMAKE
 target_include_directories(okularcore PUBLIC "$<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>")
 
 if (ANDROID)
-    set(fileName ${CMAKE_BINARY_DIR}/Okular5Core-android-dependencies.xml)
-    file(WRITE "${fileName}" "<rules><dependencies><lib name='Okular5Core'><depends>\n"
-                                "<bundled file='${KDE_INSTALL_PLUGINDIR}/okular/generators' />\n"
-                             "</depends></lib></dependencies></rules>\n")
-    install(FILES ${fileName} DESTINATION ${KDE_INSTALL_LIBDIR})
+    get_property(aux_list GLOBAL PROPERTY okular_generator_list)
+    set(okularcore_android_names Okular6Core)
+    if (CMAKE_ANDROID_ARCH_ABI)
+        list(APPEND okularcore_android_names "Okular6Core_${CMAKE_ANDROID_ARCH_ABI}")
+    endif()
+    foreach(okularcore_android_name ${okularcore_android_names})
+        set(fileName ${CMAKE_BINARY_DIR}/${okularcore_android_name}-android-dependencies.xml)
+        file(WRITE "${fileName}" "<rules><dependencies><lib name='${okularcore_android_name}'><depends>\n")
+        foreach(okular_generator ${aux_list})
+            file(APPEND "${fileName}" "<lib file='${KDE_INSTALL_PLUGINDIR}/libplugins_okular_generators_${okular_generator}.so' />\n")
+        endforeach()
+        file(APPEND "${fileName}" "</depends></lib></dependencies></rules>\n")
+        install(FILES ${fileName} DESTINATION ${KDE_INSTALL_LIBDIR})
+    endforeach()
 endif()
 
 

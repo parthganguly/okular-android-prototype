@@ -7,7 +7,10 @@
 #include "documentitem.h"
 
 #include <QMimeDatabase>
+#include <QMimeType>
 #include <QQmlEngine>
+#include <QStringList>
+#include <QUrlQuery>
 
 #ifdef Q_OS_ANDROID
 #include <QCoreApplication>
@@ -19,6 +22,54 @@
 #include <core/page.h>
 
 #include "gui/signatureguiutils.h"
+
+namespace
+{
+QString comicBookMimeTypeNameForFileName(const QString &fileName)
+{
+    const QString lowerFileName = fileName.toLower();
+
+    if (lowerFileName.endsWith(QLatin1String(".cbz"))) {
+        return QStringLiteral("application/x-cbz");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cbr"))) {
+        return QStringLiteral("application/x-cbr");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cbt"))) {
+        return QStringLiteral("application/x-cbt");
+    }
+    if (lowerFileName.endsWith(QLatin1String(".cb7"))) {
+        return QStringLiteral("application/x-cb7");
+    }
+
+    return {};
+}
+
+bool isComicBookMimeTypeName(const QString &mimeTypeName)
+{
+    return mimeTypeName == QLatin1String("application/x-cbz") || mimeTypeName == QLatin1String("application/x-cbr") || mimeTypeName == QLatin1String("application/x-cbt")
+        || mimeTypeName == QLatin1String("application/x-cb7");
+}
+
+QMimeType comicBookMimeTypeForUrl(const QUrl &url, QMimeDatabase &db)
+{
+    const QUrlQuery query(url);
+    const QString hintedMimeTypeName = query.queryItemValue(QStringLiteral("okularMimeType"));
+    if (isComicBookMimeTypeName(hintedMimeTypeName)) {
+        return db.mimeTypeForName(hintedMimeTypeName);
+    }
+
+    const QStringList fileNameHints = {query.queryItemValue(QStringLiteral("okularFileName")), url.fileName(), url.isLocalFile() ? url.toLocalFile() : QString()};
+    for (const QString &fileName : fileNameHints) {
+        const QString mimeTypeName = comicBookMimeTypeNameForFileName(fileName);
+        if (!mimeTypeName.isEmpty()) {
+            return db.mimeTypeForName(mimeTypeName);
+        }
+    }
+
+    return {};
+}
+}
 
 DocumentItem::DocumentItem(QObject *parent)
     : QObject(parent)
@@ -57,17 +108,30 @@ void DocumentItem::openUrl(const QUrl &url, const QString &password)
     m_document->closeDocument();
     // TODO: password
     QMimeDatabase db;
+    QMimeType mime = comicBookMimeTypeForUrl(url, db);
 
     QUrl realUrl = url; // NOLINT(performance-unnecessary-copy-initialization) because of the ifdef below this can't be const &
 
 #ifdef Q_OS_ANDROID
     realUrl = /* cppcheck-suppress redundantInitialization */
-        QUrl(QJniObject(QNativeInterface::QAndroidApplication::context()).callObjectMethod("contentUrlToFd", "(Ljava/lang/String;)Ljava/lang/String;", QJniObject::fromString(url.toString(QUrl::FullyEncoded)).object<jstring>()).toString());
+        QUrl(QJniObject::callStaticObjectMethod(
+                 "org/kde/something/FileClass",
+                 "contentUrlToFd",
+                 "(Ljava/lang/String;)Ljava/lang/String;",
+                 QJniObject::fromString(url.toString(QUrl::FullyEncoded)).object<jstring>())
+                 .toString());
 #endif
+
+    if (!mime.isValid() || mime.isDefault()) {
+        mime = comicBookMimeTypeForUrl(realUrl, db);
+    }
+    if (!mime.isValid() || mime.isDefault()) {
+        mime = db.mimeTypeForUrl(realUrl);
+    }
 
     const QString path = realUrl.isLocalFile() ? realUrl.toLocalFile() : QStringLiteral("-");
 
-    const Okular::Document::OpenResult res = m_document->openDocument(path, realUrl, db.mimeTypeForUrl(realUrl), password);
+    const Okular::Document::OpenResult res = m_document->openDocument(path, realUrl, mime, password);
 
     m_tocModel->clear();
     m_tocModel->fill(m_document->documentSynopsis());

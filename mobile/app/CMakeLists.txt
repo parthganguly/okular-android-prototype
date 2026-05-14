@@ -5,7 +5,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../../
 )
 add_executable(okularkirigami main.cpp)
-target_link_libraries(okularkirigami PRIVATE Qt6::Widgets Qt6::Qml KF6::I18n KF6::CoreAddons)
+target_link_libraries(okularkirigami PRIVATE Qt6::Widgets Qt6::Qml Qt6::QuickControls2 KF6::I18n KF6::CoreAddons)
 
 ecm_add_qml_module(okularkirigami
     URI "org.kde.okular.app"
@@ -29,7 +29,7 @@ ecm_target_qml_sources(okularkirigami SOURCES
 )
 
 if (ANDROID)
-    target_sources(okularkirigami PRIVATE android.cpp)
+    target_sources(okularkirigami PRIVATE android.cpp android.h okulardata.qrc)
 
     # androiddeployqt only packages libraries needed by the main binary.
     # That is problematic because some of the libraries we need we only use in plugins
@@ -57,12 +57,17 @@ if (ANDROID)
         ${KIRIGAMI_ADDONS_ICONS}
 
         application-pkcs7-signature
+        application-pdf
         bookmark-remove
         bookmarks-organize
         dialog-close
         document-open
+        folder
+        folder-open
+        go-up
         help-about-symbolic
         okular
+        view-refresh
         view-preview
         view-table-of-contents-ltr
     )

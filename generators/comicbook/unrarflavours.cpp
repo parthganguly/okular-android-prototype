@@ -124,3 +124,28 @@ ProcessArgs UnarFlavour::processOpenArchiveArgs(const QString &fileName, const Q
 {
     return ProcessArgs(QStringList() << fileName << QStringLiteral("-o") << path + QLatin1Char('/'), false);
 }
+
+BsdtarFlavour::BsdtarFlavour()
+    : UnrarFlavour()
+{
+}
+
+QStringList BsdtarFlavour::processListing(const QStringList &data)
+{
+    return data;
+}
+
+QString BsdtarFlavour::name() const
+{
+    return QStringLiteral("bsdtar");
+}
+
+ProcessArgs BsdtarFlavour::processListArgs(const QString &fileName) const
+{
+    return ProcessArgs(QStringList() << QStringLiteral("-tf") << fileName, false);
+}
+
+ProcessArgs BsdtarFlavour::processOpenArchiveArgs(const QString &fileName, const QString &path) const
+{
+    return ProcessArgs(QStringList() << QStringLiteral("-xf") << fileName << QStringLiteral("-C") << path, false);
+}

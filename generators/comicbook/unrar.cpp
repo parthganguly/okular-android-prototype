@@ -11,12 +11,16 @@
 #include <QFileInfo>
 #include <QGlobalStatic>
 #include <QLoggingCategory>
+#include <QProcessEnvironment>
+#include <QStandardPaths>
 #include <QTemporaryDir>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#endif
 
 #include "debug_comicbook.h"
 
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <memory>
 
 struct UnrarHelper {
@@ -33,10 +37,14 @@ struct UnrarHelper {
 
 Q_GLOBAL_STATIC(UnrarHelper, helper)
 
+static QString androidNativeLibraryDir();
+static QProcessEnvironment processEnvironmentWithAndroidLibraries();
+
 static UnrarFlavour *detectUnrar(const QString &unrarPath, const QString &versionCommand)
 {
     UnrarFlavour *kind = nullptr;
     QProcess proc;
+    proc.setProcessEnvironment(processEnvironmentWithAndroidLibraries());
     proc.start(unrarPath, QStringList() << versionCommand);
     bool ok = proc.waitForFinished(-1);
     Q_UNUSED(ok)
@@ -52,9 +60,69 @@ static UnrarFlavour *detectUnrar(const QString &unrarPath, const QString &versio
             kind = new FreeUnrarFlavour();
         } else if (lines.first().startsWith(QLatin1String("v"))) {
             kind = new UnarFlavour();
+        } else if (lines.first().startsWith(QLatin1String("bsdtar "))) {
+            kind = new BsdtarFlavour();
         }
     }
     return kind;
+}
+
+static QString androidNativeLibraryDir()
+{
+#ifdef Q_OS_ANDROID
+    const QJniObject dir = QJniObject::callStaticObjectMethod("org/kde/something/FileClass", "nativeLibraryDir", "()Ljava/lang/String;");
+    return dir.toString();
+#else
+    return QString();
+#endif
+}
+
+static QProcessEnvironment processEnvironmentWithAndroidLibraries()
+{
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    const QString nativeLibraryDir = androidNativeLibraryDir();
+    if (!nativeLibraryDir.isEmpty()) {
+        const QString existingLibraryPath = environment.value(QStringLiteral("LD_LIBRARY_PATH"));
+        environment.insert(QStringLiteral("LD_LIBRARY_PATH"),
+                           existingLibraryPath.isEmpty() ? nativeLibraryDir : nativeLibraryDir + QLatin1Char(':') + existingLibraryPath);
+    }
+    return environment;
+}
+
+static QStringList androidBundledExtractorCandidates()
+{
+    const QString nativeLibraryDir = androidNativeLibraryDir();
+    if (nativeLibraryDir.isEmpty()) {
+        return {};
+    }
+
+    return {
+        nativeLibraryDir + QLatin1String("/libbsdtar_arm64-v8a.so"),
+        nativeLibraryDir + QLatin1String("/libbsdtar.so"),
+        nativeLibraryDir + QLatin1String("/bsdtar"),
+    };
+}
+
+static QStringList executableCandidates()
+{
+    QStringList candidates;
+
+    const auto appendFoundExecutable = [&candidates](const QString &name) {
+        const QString path = QStandardPaths::findExecutable(name);
+        if (!path.isEmpty()) {
+            candidates.append(path);
+        }
+    };
+
+    appendFoundExecutable(QStringLiteral("unrar-nonfree"));
+    appendFoundExecutable(QStringLiteral("unrar"));
+    appendFoundExecutable(QStringLiteral("rar"));
+    appendFoundExecutable(QStringLiteral("unar"));
+    appendFoundExecutable(QStringLiteral("bsdtar"));
+    candidates.append(androidBundledExtractorCandidates());
+    candidates.removeDuplicates();
+
+    return candidates;
 }
 
 UnrarHelper::UnrarHelper()
@@ -66,24 +134,21 @@ UnrarHelper::UnrarHelper()
         lsarPath = path;
     }
 
-    path = QStandardPaths::findExecutable(QStringLiteral("unrar-nonfree"));
+    for (const QString &candidate : executableCandidates()) {
+        if (!QFileInfo::exists(candidate)) {
+            continue;
+        }
 
-    if (path.isEmpty()) {
-        path = QStandardPaths::findExecutable(QStringLiteral("unrar"));
-    }
-    if (path.isEmpty()) {
-        path = QStandardPaths::findExecutable(QStringLiteral("rar"));
-    }
-    if (path.isEmpty()) {
-        path = QStandardPaths::findExecutable(QStringLiteral("unar"));
-    }
+        kind = detectUnrar(candidate, QStringLiteral("--version"));
 
-    if (!path.isEmpty()) {
-        kind = detectUnrar(path, QStringLiteral("--version"));
-    }
+        if (!kind) {
+            kind = detectUnrar(candidate, QStringLiteral("-v"));
+        }
 
-    if (!kind) {
-        kind = detectUnrar(path, QStringLiteral("-v"));
+        if (kind) {
+            path = candidate;
+            break;
+        }
     }
 
     if (!kind) {
@@ -160,6 +225,12 @@ QStringList Unrar::list()
 
     QStringList newList;
     for (const QString &f : std::as_const(listFiles)) {
+        const QString extractedPath = mTempDir->path() + QLatin1Char('/') + f;
+        if (QFile::exists(extractedPath)) {
+            newList.append(f);
+            continue;
+        }
+
         // Extract all the files to mTempDir regardless of their path inside the archive
         // This will break if ever an arvhice with two files with the same name in different subfolders
         QFileInfo fi(f);
@@ -209,7 +280,7 @@ bool Unrar::isSuitableVersionAvailable()
         return false;
     }
 
-    if (dynamic_cast<NonFreeUnrarFlavour *>(helper->kind) || dynamic_cast<UnarFlavour *>(helper->kind)) {
+    if (dynamic_cast<NonFreeUnrarFlavour *>(helper->kind) || dynamic_cast<UnarFlavour *>(helper->kind) || dynamic_cast<BsdtarFlavour *>(helper->kind)) {
         return true;
     } else {
         return false;
@@ -251,6 +322,8 @@ int Unrar::startSyncProcess(const ProcessArgs &args)
     int ret = 0;
 
     mProcess = new QProcess(this);
+    mProcess->setProcessEnvironment(processEnvironmentWithAndroidLibraries());
+
     connect(mProcess, &QProcess::readyReadStandardOutput, this, &Unrar::readFromStdout);
     connect(mProcess, &QProcess::readyReadStandardError, this, &Unrar::readFromStderr);
     connect(mProcess, static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished), this, &Unrar::finished);

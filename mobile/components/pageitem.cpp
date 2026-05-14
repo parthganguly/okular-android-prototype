@@ -8,6 +8,7 @@
 #include "documentitem.h"
 
 #include <QPainter>
+#include <QPixmap>
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
 #include <QStyleOptionGraphicsItem>
@@ -29,6 +30,7 @@ PageItem::PageItem(QQuickItem *parent)
     , m_page(nullptr)
     , m_bookmarked(false)
     , m_isThumbnail(false)
+    , m_trimMargins(false)
 {
     setFlag(QQuickItem::ItemHasContents, true);
 
@@ -117,6 +119,7 @@ void PageItem::setPageNumber(int number)
         return;
     }
 
+    clearBuffer();
     m_viewPort.pageNumber = number;
     refreshPage();
     Q_EMIT pageNumberChanged();
@@ -129,10 +132,12 @@ void PageItem::refreshPage()
         m_page = m_documentItem.data()->document()->page(m_viewPort.pageNumber);
     } else {
         m_page = nullptr;
+        clearBuffer();
     }
 
     Q_EMIT implicitWidthChanged();
     Q_EMIT implicitHeightChanged();
+    Q_EMIT cropRatioChanged();
 
     m_redrawTimer->start();
 }
@@ -151,6 +156,40 @@ int PageItem::implicitHeight() const
         return m_page->height();
     }
     return 0;
+}
+
+qreal PageItem::cropRatio() const
+{
+    if (!m_page) {
+        return 1;
+    }
+
+    const Okular::NormalizedRect crop = effectiveCrop();
+    const qreal croppedWidth = m_page->width() * crop.width();
+    const qreal croppedHeight = m_page->height() * crop.height();
+
+    if (croppedHeight <= 0) {
+        return 1;
+    }
+
+    return croppedWidth / croppedHeight;
+}
+
+bool PageItem::trimMargins() const
+{
+    return m_trimMargins;
+}
+
+void PageItem::setTrimMargins(bool trimMargins)
+{
+    if (m_trimMargins == trimMargins) {
+        return;
+    }
+
+    m_trimMargins = trimMargins;
+    Q_EMIT trimMarginsChanged();
+    Q_EMIT cropRatioChanged();
+    m_redrawTimer->start();
 }
 
 bool PageItem::isBookmarked()
@@ -292,11 +331,8 @@ QSGNode *PageItem::updatePaintNode(QSGNode *node, QQuickItem::UpdatePaintNodeDat
 
 void PageItem::requestPixmap()
 {
-    if (!m_documentItem || !m_page || !window() || width() <= 0 || height() < 0) {
-        if (!m_buffer.isNull()) {
-            m_buffer = QImage();
-            update();
-        }
+    if (!m_documentItem || !m_page || !window() || width() <= 0 || height() <= 0) {
+        clearBuffer();
         return;
     }
 
@@ -304,17 +340,18 @@ void PageItem::requestPixmap()
     const int priority = m_isThumbnail ? THUMBNAILS_PRIO : PAGEVIEW_PRIO;
 
     const qreal dpr = window()->devicePixelRatio();
+    const Okular::NormalizedRect crop = effectiveCrop();
+    const QSize uncroppedSize = scaledUncroppedSize(crop);
 
-    // Here we want to request the pixmap for the page, but it may happen that the page
-    // already has the pixmap, thus requestPixmaps would not trigger pageHasChanged
-    // and we would not call paint. Always call paint, if we don't have a pixmap
-    // it's a noop. Requesting a page that already has a pixmap is also
-    // almost a noop.
-    // Ideally we would do one or the other but for now this is good enough
-    paint();
+    // The shared painter draws a large fallback X when no suitable pixmap is ready.
+    // On mobile that looks like an error during page turns, so only paint cached
+    // content when it can be rendered cleanly; the async request below will repaint.
+    if (hasRenderablePixmap()) {
+        paint();
+    }
     {
-        auto request = new Okular::PixmapRequest(observer, m_viewPort.pageNumber, width(), height(), dpr, priority, Okular::PixmapRequest::Asynchronous);
-        request->setNormalizedRect(Okular::NormalizedRect(0, 0, 1, 1));
+        auto request = new Okular::PixmapRequest(observer, m_viewPort.pageNumber, uncroppedSize.width(), uncroppedSize.height(), dpr, priority, Okular::PixmapRequest::Asynchronous);
+        request->setNormalizedRect(crop);
         const Okular::Document::PixmapRequestFlag prf = Okular::Document::NoOption;
         m_documentItem.data()->document()->requestPixmaps({request}, prf);
     }
@@ -322,16 +359,23 @@ void PageItem::requestPixmap()
 
 void PageItem::paint()
 {
+    if (!hasRenderablePixmap()) {
+        clearBuffer();
+        return;
+    }
+
     Observer *observer = m_isThumbnail ? m_documentItem.data()->thumbnailObserver() : m_documentItem.data()->pageviewObserver();
     const int flags = PagePainter::Accessibility | PagePainter::Highlights | PagePainter::Annotations;
 
     const qreal dpr = window()->devicePixelRatio();
     const QRect limits(QPoint(0, 0), QSize(width() * dpr, height() * dpr));
+    const Okular::NormalizedRect crop = effectiveCrop();
+    const QSize uncroppedSize = scaledUncroppedSize(crop);
     QPixmap pix(limits.size());
     pix.setDevicePixelRatio(dpr);
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing, false);
-    PagePainter::paintPageOnPainter(&p, m_page, observer, flags, width(), height(), limits);
+    PagePainter::paintCroppedPageOnPainter(&p, m_page, observer, flags, uncroppedSize.width(), uncroppedSize.height(), limits, crop, nullptr);
     p.end();
 
     m_buffer = pix.toImage();
@@ -339,13 +383,74 @@ void PageItem::paint()
     update();
 }
 
+bool PageItem::hasRenderablePixmap() const
+{
+    if (!m_documentItem || !m_page || !window() || width() <= 0 || height() <= 0) {
+        return false;
+    }
+
+    Observer *observer = m_isThumbnail ? m_documentItem.data()->thumbnailObserver() : m_documentItem.data()->pageviewObserver();
+    return m_page->hasTilesManager(observer) || m_page->hasPixmap(observer);
+}
+
+void PageItem::clearBuffer()
+{
+    if (!m_buffer.isNull()) {
+        m_buffer = QImage();
+        update();
+    }
+}
+
+Okular::NormalizedRect PageItem::effectiveCrop() const
+{
+    if (!m_trimMargins || !m_page || !m_page->isBoundingBoxKnown() || m_page->boundingBox().isNull()) {
+        return Okular::NormalizedRect(0, 0, 1, 1);
+    }
+
+    Okular::NormalizedRect crop = m_page->boundingBox();
+
+    for (int i = m_page->rotation(); i > 0; --i) {
+        const Okular::NormalizedRect rot = crop;
+        crop.left = 1 - rot.bottom;
+        crop.top = rot.left;
+        crop.right = 1 - rot.top;
+        crop.bottom = rot.right;
+    }
+
+    static const double cropExpandRatio = 0.04;
+    const double cropExpand = cropExpandRatio * (crop.width() + crop.height()) / 2;
+    crop = Okular::NormalizedRect(crop.left - cropExpand, crop.top - cropExpand, crop.right + cropExpand, crop.bottom + cropExpand) & Okular::NormalizedRect(0, 0, 1, 1);
+
+    // Avoid exploding a mostly blank page into an unreadably huge crop.
+    static const double minCropRatio = 0.5;
+    if (crop.width() < minCropRatio) {
+        const double newLeft = (crop.left + crop.right) / 2 - minCropRatio / 2;
+        crop.left = qMax(0.0, qMin(1.0 - minCropRatio, newLeft));
+        crop.right = crop.left + minCropRatio;
+    }
+    if (crop.height() < minCropRatio) {
+        const double newTop = (crop.top + crop.bottom) / 2 - minCropRatio / 2;
+        crop.top = qMax(0.0, qMin(1.0 - minCropRatio, newTop));
+        crop.bottom = crop.top + minCropRatio;
+    }
+
+    return crop;
+}
+
+QSize PageItem::scaledUncroppedSize(const Okular::NormalizedRect &crop) const
+{
+    const qreal safeCropWidth = qMax<qreal>(crop.width(), 0.01);
+    const qreal safeCropHeight = qMax<qreal>(crop.height(), 0.01);
+    return QSize(qMax(1, qRound(width() / safeCropWidth)), qMax(1, qRound(height() / safeCropHeight)));
+}
+
 // Protected slots
 void PageItem::pageHasChanged(int page, int flags)
 {
     if (m_viewPort.pageNumber == page) {
         if (flags == Okular::DocumentObserver::BoundingBox) {
-            // skip bounding box updates
-            // kDebug() << "32" << m_page->boundingBox();
+            Q_EMIT cropRatioChanged();
+            m_redrawTimer->start();
         } else if (flags == Okular::DocumentObserver::Pixmap) {
             // if pixmaps have updated, just repaint .. don't bother updating pixmaps AGAIN
             paint();

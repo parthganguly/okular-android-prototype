@@ -14,17 +14,20 @@ Item {
     readonly property PageItem pageItem: page
     property alias document: page.document
     property alias pageNumber: page.pageNumber
+    property alias trimMargins: page.trimMargins
+    property real pageDisplayWidth: parent ? parent.width : 0
+    property real pageDisplayHeight: pageDisplayWidth / pageRatio
     implicitWidth: page.implicitWidth
     implicitHeight: page.implicitHeight
-    readonly property real pageRatio: page.implicitWidth / page.implicitHeight
+    readonly property real pageRatio: page.cropRatio > 0 ? page.cropRatio : 1
     readonly property real scaleFactor: page.width / page.implicitWidth
 
     PageItem {
         id: page
-        property bool sameOrientation: parent.width / parent.height > pageRatio
-        anchors.centerIn: parent
-        width: sameOrientation ? parent.height * pageRatio : parent.width
-        height: !sameOrientation ? parent.width / pageRatio : parent.height
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: Math.max(0, (parent.height - height) / 2)
+        width: Math.max(1, parent.pageDisplayWidth)
+        height: Math.max(1, parent.pageDisplayHeight)
         document: null
     }
 
@@ -32,12 +35,10 @@ Item {
         id: backgroundRectangle
         visible: page.document.opened
         anchors {
-            top: parent.top
-            bottom: parent.bottom
+            top: page.top
+            bottom: page.bottom
             left: page.left
             right: page.right
-            topMargin: -Kirigami.Units.gridUnit
-            bottomMargin: -Kirigami.Units.gridUnit
         }
         z: -1
         color: "white"

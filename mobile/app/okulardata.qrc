@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/okular">
+        <file alias="drawingtools.xml">../../part/data/drawingtools.xml</file>
+        <file alias="tools.xml">../../part/data/tools.xml</file>
+        <file alias="toolsQuick.xml">../../part/data/toolsQuick.xml</file>
+    </qresource>
+</RCC>
