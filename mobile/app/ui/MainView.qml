@@ -20,6 +20,11 @@ Kirigami.Page {
     readonly property bool compactControls: width < Kirigami.Units.gridUnit * 36
     readonly property real toolbarTopInset: Math.max(0, fileBrowserRoot.topSystemInset)
     readonly property real toolbarContentHeight: Math.max(48, Math.min(54, Kirigami.Units.gridUnit * 2.55))
+    readonly property color readerToolbarSurface: Qt.rgba(0.98, 0.97, 0.94, 0.95)
+    readonly property color readerToolbarBorder: Qt.rgba(0.12, 0.10, 0.08, 0.16)
+    readonly property color readerToolbarTextColor: "#24211f"
+    readonly property color readerToolbarMutedColor: Qt.rgba(0.10, 0.09, 0.08, 0.62)
+    readonly property color readerToolbarAccentColor: "#e91e63"
 
     function revealControls() {
         if (!document.opened) {
@@ -145,23 +150,27 @@ Kirigami.Page {
             top: parent.top
             left: parent.left
             right: parent.right
-            topMargin: root.toolbarTopInset
+            topMargin: root.toolbarTopInset + Math.round(Kirigami.Units.smallSpacing * 0.75)
+            leftMargin: Math.round(Kirigami.Units.smallSpacing * 0.75)
+            rightMargin: Math.round(Kirigami.Units.smallSpacing * 0.75)
         }
         height: root.toolbarContentHeight
-        color: Qt.rgba(0.10, 0.11, 0.12, 0.91)
+        radius: Math.round(height * 0.36)
+        color: root.readerToolbarSurface
+        border.color: root.readerToolbarBorder
         Kirigami.Theme.inherit: false
-        Kirigami.Theme.colorSet: Kirigami.Theme.Header
-        Kirigami.Theme.textColor: "#eff0f1"
-        Kirigami.Theme.highlightColor: "#3daee9"
+        Kirigami.Theme.colorSet: Kirigami.Theme.View
+        Kirigami.Theme.textColor: root.readerToolbarTextColor
+        Kirigami.Theme.highlightColor: root.readerToolbarAccentColor
 
         RowLayout {
             anchors {
                 fill: parent
-                leftMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
-                rightMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
+                leftMargin: Math.max(6, Kirigami.Units.smallSpacing)
+                rightMargin: Math.max(6, Kirigami.Units.smallSpacing)
                 bottomMargin: 0
             }
-            spacing: Math.max(2, Kirigami.Units.smallSpacing / 2)
+            spacing: Math.max(3, Kirigami.Units.smallSpacing / 2)
 
             QQC2.ToolButton {
                 icon.name: "document-open"
@@ -176,24 +185,25 @@ Kirigami.Page {
             }
 
             QQC2.Label {
+                visible: !root.compactControls
                 text: document.windowTitleForDocument ? document.windowTitleForDocument : i18n("Okular")
                 color: Kirigami.Theme.textColor
                 elide: Text.ElideMiddle
-                Layout.fillWidth: true
+                Layout.fillWidth: visible
             }
 
             Rectangle {
                 visible: document.pageCount > 0
-                color: Qt.rgba(1, 1, 1, 0.10)
-                radius: 6
+                color: Qt.rgba(0.91, 0.89, 0.85, 0.82)
+                radius: Math.round(height * 0.28)
+                border.color: Qt.rgba(0.12, 0.10, 0.08, 0.08)
                 Layout.preferredWidth: root.compactControls ? Kirigami.Units.gridUnit * 3.1 : Kirigami.Units.gridUnit * 4.1
                 Layout.preferredHeight: Math.max(28, root.toolbarContentHeight - 10)
 
                 QQC2.Label {
                     anchors.centerIn: parent
                     text: i18nc("current page and page count", "%1 / %2", document.currentPage + 1, document.pageCount)
-                    color: Kirigami.Theme.textColor
-                    opacity: 0.86
+                    color: root.readerToolbarMutedColor
                     font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.68))
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -277,7 +287,7 @@ Kirigami.Page {
             orientation: Gradient.Vertical
             GradientStop {
                 position: 0.0
-                color: Qt.rgba(0, 0, 0, 0.28)
+                color: Qt.rgba(0, 0, 0, 0.16)
             }
             GradientStop {
                 position: 1.0
@@ -307,7 +317,7 @@ Kirigami.Page {
                 left: parent.left
             }
             width: parent.width * (document.pageCount > 0 ? ((document.currentPage + 1) / document.pageCount) : 0)
-            color: "#3daee9"
+            color: root.readerToolbarAccentColor
         }
     }
 }
