@@ -22,6 +22,13 @@ Item {
     anchors.fill: parent
     readonly property bool androidLibraryAvailable: typeof uriHandler !== "undefined" && uriHandler.libraryJson !== undefined
     readonly property real bottomInset: androidLibraryAvailable && typeof fileBrowserRoot !== "undefined" ? fileBrowserRoot.bottomSystemInset : 0
+    readonly property color libraryBackgroundColor: "#fbfaf7"
+    readonly property color surfaceColor: "#ffffff"
+    readonly property color softSurfaceColor: "#f0eeea"
+    readonly property color pressedSurfaceColor: "#ece8e1"
+    readonly property color quietBorderColor: Qt.rgba(0.12, 0.10, 0.08, 0.11)
+    readonly property color mutedTextColor: Qt.rgba(0.10, 0.09, 0.08, 0.62)
+    readonly property color okularAccentColor: "#e91e63"
     property var libraryState: ({
         "hasFolder": false,
         "title": i18nc("document library", "Local"),
@@ -113,17 +120,40 @@ Item {
         return entry.subtitle ? entry.subtitle : (entry.kind === "folder" ? i18nc("document library", "Folder") : (entry.mimeType || i18nc("document library", "Document")))
     }
 
-    function categoryColor(category, folderRow) {
-        if (folderRow) {
-            return "#3daee9"
-        }
+    function categoryAccent(category) {
         if (category === "books") {
-            return "#f67400"
+            return "#a8662a"
         }
         if (category === "pictures") {
-            return "#27ae60"
+            return "#3d7a55"
         }
-        return Qt.rgba(0.45, 0.45, 0.45, 0.18)
+        if (category === "documents") {
+            return "#516171"
+        }
+        return "#2c78a4"
+    }
+
+    function categoryShortLabel(category) {
+        if (category === "books") {
+            return i18nc("document library short type", "Book")
+        }
+        if (category === "pictures") {
+            return i18nc("document library short type", "Image")
+        }
+        return i18nc("document library short type", "Doc")
+    }
+
+    function categoryColor(category, folderRow) {
+        if (folderRow) {
+            return "#dbeaf2"
+        }
+        if (category === "books") {
+            return "#f7e1c7"
+        }
+        if (category === "pictures") {
+            return "#deefe5"
+        }
+        return "#ebe8e2"
     }
 
     function updateLibraryState() {
@@ -154,6 +184,12 @@ Item {
         function onLibraryJsonChanged() {
             welcomeView.updateLibraryState();
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: welcomeView.androidLibraryAvailable
+        color: welcomeView.libraryBackgroundColor
     }
 
     ColumnLayout {
@@ -206,48 +242,100 @@ Item {
             }
         }
 
-        RowLayout {
+        Rectangle {
             id: libraryHeader
             visible: welcomeView.androidLibraryAvailable
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(52, Kirigami.Units.gridUnit * 2.6)
+            Layout.preferredHeight: Math.max(86, Kirigami.Units.gridUnit * 4.4)
             Layout.leftMargin: Kirigami.Units.gridUnit
             Layout.rightMargin: Kirigami.Units.gridUnit
-            spacing: Kirigami.Units.smallSpacing
+            Layout.topMargin: Kirigami.Units.smallSpacing
+            Layout.bottomMargin: Kirigami.Units.smallSpacing
+            radius: Math.round(Kirigami.Units.gridUnit * 1.25)
+            color: welcomeView.surfaceColor
+            border.color: welcomeView.quietBorderColor
 
-            Kirigami.Heading {
-                text: welcomeView.libraryState.canGoUp ? welcomeView.libraryState.title : welcomeView.categoryLabel(welcomeView.activeCategory)
-                elide: Text.ElideMiddle
-                level: 1
-                Layout.fillWidth: true
-            }
+            ColumnLayout {
+                anchors {
+                    fill: parent
+                    margins: Math.round(Kirigami.Units.gridUnit * 0.82)
+                }
+                spacing: Math.round(Kirigami.Units.smallSpacing * 0.75)
 
-            Controls.ToolButton {
-                visible: welcomeView.libraryState.needsAllFilesAccess
-                text: i18nc("document library", "Allow Access")
-                icon.name: "folder-open"
-                onClicked: uriHandler.requestAllFilesAccess()
-            }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
 
-            Controls.ToolButton {
-                visible: welcomeView.libraryState.needsAllFilesAccess
-                text: i18nc("document library", "Choose Folder")
-                icon.name: "folder-open"
-                onClicked: uriHandler.openLibraryFolder()
-            }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
 
-            Controls.ToolButton {
-                text: i18nc("document library", "Up")
-                icon.name: "go-up"
-                visible: welcomeView.libraryState.canGoUp
-                enabled: welcomeView.libraryState.canGoUp
-                onClicked: uriHandler.navigateLibraryUp()
-            }
+                        Controls.Label {
+                            text: welcomeView.libraryState.canGoUp ? welcomeView.libraryState.title : welcomeView.categoryLabel(welcomeView.activeCategory)
+                            elide: Text.ElideMiddle
+                            Layout.fillWidth: true
+                            font.pixelSize: Math.round(Kirigami.Units.gridUnit * 1.45)
+                            font.weight: Font.DemiBold
+                            color: "#1c1b1a"
+                        }
 
-            Controls.ToolButton {
-                text: i18nc("document library", "Refresh")
-                icon.name: "view-refresh"
-                onClicked: uriHandler.refreshLibrary()
+                        Controls.Label {
+                            text: welcomeView.libraryState.canGoUp
+                                    ? i18nc("document library", "Browsing this folder")
+                                    : i18nc("document library", "Your readable files, grouped by folder")
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            color: welcomeView.mutedTextColor
+                            font.pixelSize: Math.max(12, Math.round(Kirigami.Units.gridUnit * 0.68))
+                        }
+                    }
+
+                    Controls.ToolButton {
+                        visible: welcomeView.libraryState.needsAllFilesAccess
+                        text: i18nc("document library", "Allow")
+                        icon.name: "folder-open"
+                        onClicked: uriHandler.requestAllFilesAccess()
+                    }
+
+                    Controls.ToolButton {
+                        visible: welcomeView.libraryState.needsAllFilesAccess
+                        text: i18nc("document library", "Folder")
+                        icon.name: "folder-open"
+                        onClicked: uriHandler.openLibraryFolder()
+                    }
+
+                    Controls.ToolButton {
+                        text: i18nc("document library", "Up")
+                        icon.name: "go-up"
+                        visible: welcomeView.libraryState.canGoUp
+                        enabled: welcomeView.libraryState.canGoUp
+                        onClicked: uriHandler.navigateLibraryUp()
+                    }
+
+                    Controls.ToolButton {
+                        text: i18nc("document library", "Refresh")
+                        icon.name: "view-refresh"
+                        onClicked: uriHandler.refreshLibrary()
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    visible: welcomeView.libraryState.needsAllFilesAccess
+                    color: welcomeView.quietBorderColor
+                }
+
+                Controls.Label {
+                    visible: welcomeView.libraryState.needsAllFilesAccess
+                    text: welcomeView.libraryState.message
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    color: welcomeView.mutedTextColor
+                    font.pixelSize: Math.max(12, Math.round(Kirigami.Units.gridUnit * 0.64))
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                }
             }
         }
 
@@ -256,29 +344,29 @@ Item {
             Layout.fillWidth: true
             Layout.leftMargin: Kirigami.Units.gridUnit
             Layout.rightMargin: Kirigami.Units.gridUnit
-            Layout.bottomMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.smallSpacing
+            Layout.bottomMargin: Math.round(Kirigami.Units.smallSpacing * 1.5)
+            spacing: Math.round(Kirigami.Units.smallSpacing * 0.75)
 
             Repeater {
                 model: welcomeView.categoryTabs
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(34, Kirigami.Units.gridUnit * 1.8)
+                    Layout.preferredHeight: Math.max(40, Kirigami.Units.gridUnit * 2.05)
                     radius: height / 2
-                    color: welcomeView.activeCategory === modelData.id ? Kirigami.Theme.highlightColor : Qt.rgba(0, 0, 0, 0.08)
-                    border.width: welcomeView.activeCategory === modelData.id ? 0 : 1
-                    border.color: Qt.rgba(0, 0, 0, 0.14)
+                    color: welcomeView.activeCategory === modelData.id ? welcomeView.okularAccentColor : welcomeView.softSurfaceColor
+                    border.width: 1
+                    border.color: welcomeView.activeCategory === modelData.id ? Qt.rgba(0, 0, 0, 0) : welcomeView.quietBorderColor
 
                     Controls.Label {
                         anchors.centerIn: parent
                         width: parent.width - Kirigami.Units.smallSpacing
                         text: modelData.label
-                        color: welcomeView.activeCategory === modelData.id ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                        color: welcomeView.activeCategory === modelData.id ? "#ffffff" : "#302d2a"
                         elide: Text.ElideRight
                         horizontalAlignment: Text.AlignHCenter
                         font.bold: welcomeView.activeCategory === modelData.id
-                        font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.68))
+                        font.pixelSize: Math.max(12, Math.round(Kirigami.Units.gridUnit * 0.7))
                     }
 
                     MouseArea {
@@ -290,10 +378,10 @@ Item {
         }
 
         Controls.Label {
-            visible: welcomeView.androidLibraryAvailable && welcomeView.libraryMessage
+            visible: welcomeView.androidLibraryAvailable && !welcomeView.libraryState.needsAllFilesAccess && welcomeView.libraryMessage
             text: welcomeView.libraryMessage
             wrapMode: Text.WordWrap
-            opacity: 0.75
+            color: welcomeView.mutedTextColor
             Layout.fillWidth: true
             Layout.leftMargin: Kirigami.Units.gridUnit
             Layout.rightMargin: Kirigami.Units.gridUnit
@@ -306,104 +394,138 @@ Item {
             Layout.fillHeight: true
             visible: welcomeView.androidLibraryAvailable && welcomeView.libraryState.hasFolder
             clip: true
+            spacing: Math.round(Kirigami.Units.smallSpacing * 0.35)
+            topMargin: Kirigami.Units.smallSpacing
+            bottomMargin: Math.max(Kirigami.Units.gridUnit, welcomeView.bottomInset + Kirigami.Units.gridUnit)
             model: welcomeView.filteredLibraryEntries
 
-            delegate: Rectangle {
+            delegate: Item {
                 property bool folderRow: modelData.kind === "folder"
 
                 width: libraryList.width
-                height: Math.max(64, Kirigami.Units.gridUnit * 3.05)
-                color: rowTap.pressed ? Qt.rgba(0, 0, 0, 0.08) : Kirigami.Theme.backgroundColor
-
-                RowLayout {
-                    anchors {
-                        fill: parent
-                        leftMargin: Kirigami.Units.gridUnit
-                        rightMargin: Kirigami.Units.gridUnit
-                    }
-                    spacing: Math.round(Kirigami.Units.gridUnit * 0.65)
-
-                    Item {
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.9
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 1.9
-
-                        Rectangle {
-                            visible: folderRow
-                            x: Math.round(parent.width * 0.16)
-                            y: Math.round(parent.height * 0.25)
-                            width: Math.round(parent.width * 0.40)
-                            height: Math.round(parent.height * 0.20)
-                            radius: 2
-                            color: welcomeView.categoryColor(modelData.category, true)
-                        }
-
-                        Rectangle {
-                            visible: folderRow
-                            x: Math.round(parent.width * 0.10)
-                            y: Math.round(parent.height * 0.38)
-                            width: Math.round(parent.width * 0.78)
-                            height: Math.round(parent.height * 0.44)
-                            radius: 4
-                            color: welcomeView.categoryColor(modelData.category, true)
-                        }
-
-                        Rectangle {
-                            visible: !folderRow
-                            anchors.centerIn: parent
-                            width: Math.round(parent.width * 0.62)
-                            height: Math.round(parent.height * 0.78)
-                            radius: 3
-                            color: welcomeView.categoryColor(modelData.category, false)
-                            border.color: Qt.rgba(0.25, 0.25, 0.25, 0.42)
-                        }
-
-                        Rectangle {
-                            visible: !folderRow
-                            x: Math.round(parent.width * 0.58)
-                            y: Math.round(parent.height * 0.13)
-                            width: Math.round(parent.width * 0.16)
-                            height: Math.round(parent.height * 0.16)
-                            color: Kirigami.Theme.backgroundColor
-                            border.color: Qt.rgba(0.25, 0.25, 0.25, 0.42)
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        Controls.Label {
-                            text: modelData.name
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
-                            font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.92)
-                        }
-
-                        Controls.Label {
-                            text: welcomeView.entrySubtitle(modelData)
-                            elide: Text.ElideRight
-                            opacity: 0.62
-                            font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.68)
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
+                height: Math.max(78, Kirigami.Units.gridUnit * 3.75)
 
                 Rectangle {
                     anchors {
                         left: parent.left
                         right: parent.right
+                        top: parent.top
                         bottom: parent.bottom
-                        leftMargin: Kirigami.Units.gridUnit * 3.8
+                        leftMargin: Kirigami.Units.gridUnit
+                        rightMargin: Kirigami.Units.gridUnit
+                        topMargin: Math.round(Kirigami.Units.smallSpacing * 0.45)
+                        bottomMargin: Math.round(Kirigami.Units.smallSpacing * 0.45)
                     }
-                    height: 1
-                    color: Kirigami.Theme.textColor
-                    opacity: 0.12
+                    radius: Math.round(Kirigami.Units.gridUnit * 0.85)
+                    color: rowTap.pressed ? welcomeView.pressedSurfaceColor : welcomeView.surfaceColor
+                    border.color: welcomeView.quietBorderColor
+
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: Math.round(Kirigami.Units.gridUnit * 0.85)
+                            rightMargin: Math.round(Kirigami.Units.gridUnit * 0.75)
+                            topMargin: Kirigami.Units.smallSpacing
+                            bottomMargin: Kirigami.Units.smallSpacing
+                        }
+                        spacing: Math.round(Kirigami.Units.gridUnit * 0.7)
+
+                        Rectangle {
+                            Layout.preferredWidth: Math.round(Kirigami.Units.gridUnit * 2.35)
+                            Layout.preferredHeight: Math.round(Kirigami.Units.gridUnit * 2.35)
+                            radius: Math.round(width * 0.34)
+                            color: welcomeView.categoryColor(modelData.category, folderRow)
+                            border.color: Qt.rgba(0.12, 0.10, 0.08, 0.06)
+
+                            Rectangle {
+                                visible: folderRow
+                                x: Math.round(parent.width * 0.24)
+                                y: Math.round(parent.height * 0.30)
+                                width: Math.round(parent.width * 0.32)
+                                height: Math.round(parent.height * 0.13)
+                                radius: 2
+                                color: welcomeView.categoryAccent(modelData.category)
+                                opacity: 0.72
+                            }
+
+                            Rectangle {
+                                visible: folderRow
+                                anchors.centerIn: parent
+                                width: Math.round(parent.width * 0.56)
+                                height: Math.round(parent.height * 0.36)
+                                radius: 4
+                                color: welcomeView.categoryAccent(modelData.category)
+                                opacity: 0.82
+                            }
+
+                            Rectangle {
+                                visible: !folderRow
+                                anchors.centerIn: parent
+                                width: Math.round(parent.width * 0.42)
+                                height: Math.round(parent.height * 0.56)
+                                radius: 4
+                                color: Qt.rgba(1, 1, 1, 0.72)
+                                border.color: welcomeView.categoryAccent(modelData.category)
+                            }
+
+                            Rectangle {
+                                visible: !folderRow
+                                x: Math.round(parent.width * 0.53)
+                                y: Math.round(parent.height * 0.24)
+                                width: Math.round(parent.width * 0.10)
+                                height: Math.round(parent.height * 0.10)
+                                color: welcomeView.categoryAccent(modelData.category)
+                                opacity: 0.45
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Math.round(Kirigami.Units.smallSpacing * 0.2)
+
+                            Controls.Label {
+                                text: modelData.name
+                                elide: Text.ElideMiddle
+                                Layout.fillWidth: true
+                                font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.92)
+                                font.weight: Font.Medium
+                                color: "#24211f"
+                            }
+
+                            Controls.Label {
+                                text: welcomeView.entrySubtitle(modelData)
+                                elide: Text.ElideRight
+                                color: welcomeView.mutedTextColor
+                                font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.66)
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle {
+                            visible: !folderRow
+                            Layout.preferredWidth: Math.max(46, Kirigami.Units.gridUnit * 2.3)
+                            Layout.preferredHeight: Math.max(24, Kirigami.Units.gridUnit * 1.15)
+                            radius: height / 2
+                            color: welcomeView.categoryColor(modelData.category, false)
+
+                            Controls.Label {
+                                anchors.centerIn: parent
+                                text: welcomeView.categoryShortLabel(modelData.category)
+                                color: welcomeView.categoryAccent(modelData.category)
+                                font.pixelSize: Math.max(10, Math.round(Kirigami.Units.gridUnit * 0.54))
+                                font.bold: true
+                            }
+                        }
+                    }
                 }
 
                 MouseArea {
                     id: rowTap
-                    anchors.fill: parent
+                    anchors {
+                        fill: parent
+                        leftMargin: Kirigami.Units.gridUnit
+                        rightMargin: Kirigami.Units.gridUnit
+                    }
                     onClicked: {
                         if (modelData.kind === "folder") {
                             uriHandler.openLibraryFolderUri(modelData.uri);
