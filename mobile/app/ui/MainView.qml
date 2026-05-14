@@ -18,7 +18,8 @@ Kirigami.Page {
     property alias page: pageArea.page
     readonly property bool chromeVisible: document.opened && applicationWindow().controlsVisible
     readonly property bool compactControls: width < Kirigami.Units.gridUnit * 36
-    readonly property real toolbarContentHeight: Math.max(40, Math.min(46, Kirigami.Units.gridUnit * 2.35))
+    readonly property real toolbarTopInset: Math.max(0, fileBrowserRoot.topSystemInset)
+    readonly property real toolbarContentHeight: Math.max(48, Math.min(54, Kirigami.Units.gridUnit * 2.55))
 
     function revealControls() {
         if (!document.opened) {
@@ -144,9 +145,9 @@ Kirigami.Page {
             top: parent.top
             left: parent.left
             right: parent.right
-            topMargin: -fileBrowserRoot.topSystemInset
+            topMargin: root.toolbarTopInset
         }
-        height: fileBrowserRoot.topSystemInset + root.toolbarContentHeight
+        height: root.toolbarContentHeight
         color: Qt.rgba(0.10, 0.11, 0.12, 0.91)
         Kirigami.Theme.inherit: false
         Kirigami.Theme.colorSet: Kirigami.Theme.Header
@@ -156,7 +157,6 @@ Kirigami.Page {
         RowLayout {
             anchors {
                 fill: parent
-                topMargin: fileBrowserRoot.topSystemInset
                 leftMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
                 rightMargin: Math.max(3, Kirigami.Units.smallSpacing / 2)
                 bottomMargin: 0
