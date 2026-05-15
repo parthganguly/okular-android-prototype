@@ -6,7 +6,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.pdf.PdfRenderer;
 import android.util.Log;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,6 +28,9 @@ import android.view.WindowInsetsController;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,6 +39,8 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -153,6 +162,10 @@ public class OpenFileActivity extends QtActivity
         int documentCount = 0;
         int bookCount = 0;
         int pictureCount = 0;
+        int newCount = 0;
+        int newDocumentCount = 0;
+        int newBookCount = 0;
+        int newPictureCount = 0;
         long modified = 0;
 
         FolderSummary(File folder)
@@ -160,15 +173,27 @@ public class OpenFileActivity extends QtActivity
             this.folder = folder;
         }
 
-        void add(File file, String category)
+        void add(File file, String category, boolean isNew)
         {
             count++;
             if (CATEGORY_DOCUMENTS.equals(category)) {
                 documentCount++;
+                if (isNew) {
+                    newDocumentCount++;
+                }
             } else if (CATEGORY_BOOKS.equals(category)) {
                 bookCount++;
+                if (isNew) {
+                    newBookCount++;
+                }
             } else if (CATEGORY_PICTURES.equals(category)) {
                 pictureCount++;
+                if (isNew) {
+                    newPictureCount++;
+                }
+            }
+            if (isNew) {
+                newCount++;
             }
             modified = Math.max(modified, file.lastModified());
         }
@@ -186,6 +211,20 @@ public class OpenFileActivity extends QtActivity
             }
             return count;
         }
+
+        int newCountForCategory(String category)
+        {
+            if (CATEGORY_DOCUMENTS.equals(category)) {
+                return newDocumentCount;
+            }
+            if (CATEGORY_BOOKS.equals(category)) {
+                return newBookCount;
+            }
+            if (CATEGORY_PICTURES.equals(category)) {
+                return newPictureCount;
+            }
+            return newCount;
+        }
     }
 
     static final String TAG = "Okular";
@@ -198,6 +237,11 @@ public class OpenFileActivity extends QtActivity
     private static final String PREF_SCAN_FOLDER_PATH = "scanFolderPath";
     private static final String PREF_LIBRARY_OVERVIEW_CACHE_JSON = "libraryOverviewCacheJson";
     private static final String PREF_LIBRARY_OVERVIEW_CACHE_TIME = "libraryOverviewCacheTime";
+    private static final String PREF_RECENT_JSON = "recentJson";
+    private static final int MAX_RECENT_DOCUMENTS = 12;
+    private static final int MAX_RECENT_THUMBNAIL_WIDTH = 320;
+    private static final int MAX_RECENT_THUMBNAIL_HEIGHT = 480;
+    private static final long NEW_FILE_WINDOW_MS = 7L * 24L * 60L * 60L * 1000L;
     private static final String CATEGORY_LOCAL = "local";
     private static final String CATEGORY_DOCUMENTS = "documents";
     private static final String CATEGORY_BOOKS = "books";
@@ -364,6 +408,10 @@ public class OpenFileActivity extends QtActivity
 
     private boolean isSupportedLibraryDocument(String name, String mimeType)
     {
+        if (name != null && name.startsWith(".")) {
+            return false;
+        }
+
         if (mimeType != null) {
             switch (mimeType) {
             case "application/pdf":
@@ -433,7 +481,284 @@ public class OpenFileActivity extends QtActivity
         entry.put("mimeType", mimeType == null ? "" : mimeType);
         entry.put("size", size);
         entry.put("modified", modified);
+        entry.put("isNew", isNewModified(modified));
         return entry;
+    }
+
+    private boolean isNewModified(long modified)
+    {
+        if (modified <= 0) {
+            return false;
+        }
+
+        final long now = System.currentTimeMillis();
+        return modified <= now + 60L * 60L * 1000L && modified >= now - NEW_FILE_WINDOW_MS;
+    }
+
+    private JSONArray recentDocumentsJson()
+    {
+        final String rawJson = libraryPrefs().getString(PREF_RECENT_JSON, "[]");
+        try {
+            return new JSONArray(rawJson);
+        } catch (JSONException e) {
+            Log.w(TAG, "Cannot parse recent documents", e);
+            return new JSONArray();
+        }
+    }
+
+    private long sizeForUri(Uri uri)
+    {
+        if (uri == null) {
+            return 0;
+        }
+        if ("file".equals(uri.getScheme())) {
+            final File file = new File(uri.getPath());
+            return file.isFile() ? file.length() : 0;
+        }
+
+        try (Cursor cursor = getContentResolver().query(uri, new String[] { OpenableColumns.SIZE }, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                final int column = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (column >= 0) {
+                    return cursor.getLong(column);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot query document size", e);
+        }
+        return 0;
+    }
+
+    private long modifiedForUri(Uri uri)
+    {
+        if (uri == null) {
+            return 0;
+        }
+        if ("file".equals(uri.getScheme())) {
+            final File file = new File(uri.getPath());
+            return file.isFile() ? file.lastModified() : 0;
+        }
+
+        try (Cursor cursor = getContentResolver().query(uri, new String[] { Document.COLUMN_LAST_MODIFIED }, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                final int column = cursor.getColumnIndex(Document.COLUMN_LAST_MODIFIED);
+                if (column >= 0) {
+                    return cursor.getLong(column);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot query modified time", e);
+        }
+        return 0;
+    }
+
+    private ParcelFileDescriptor openThumbnailDescriptor(Uri uri) throws FileNotFoundException
+    {
+        if ("file".equals(uri.getScheme())) {
+            return ParcelFileDescriptor.open(new File(uri.getPath()), ParcelFileDescriptor.MODE_READ_ONLY);
+        }
+        return getContentResolver().openFileDescriptor(uri, "r");
+    }
+
+    private InputStream openThumbnailInputStream(Uri uri) throws FileNotFoundException
+    {
+        if ("file".equals(uri.getScheme())) {
+            return new java.io.FileInputStream(new File(uri.getPath()));
+        }
+        return getContentResolver().openInputStream(uri);
+    }
+
+    private File thumbnailFileFor(String uriString, long modified)
+    {
+        final File directory = new File(getCacheDir(), "library-thumbnails");
+        if (!directory.exists() && !directory.mkdirs()) {
+            Log.w(TAG, "Cannot create thumbnail cache");
+        }
+        final String stableName = Integer.toHexString(uriString.hashCode()) + "-" + Long.toHexString(modified) + ".jpg";
+        return new File(directory, stableName);
+    }
+
+    private Bitmap scaleBitmapToThumbnail(Bitmap source)
+    {
+        if (source == null || source.getWidth() <= 0 || source.getHeight() <= 0) {
+            return source;
+        }
+
+        final float scale = Math.min(
+                (float) MAX_RECENT_THUMBNAIL_WIDTH / (float) source.getWidth(),
+                (float) MAX_RECENT_THUMBNAIL_HEIGHT / (float) source.getHeight());
+        if (scale >= 1.0f) {
+            return source;
+        }
+
+        final int width = Math.max(1, Math.round(source.getWidth() * scale));
+        final int height = Math.max(1, Math.round(source.getHeight() * scale));
+        return Bitmap.createScaledBitmap(source, width, height, true);
+    }
+
+    private String saveThumbnailBitmap(Bitmap bitmap, String uriString, long modified)
+    {
+        if (bitmap == null) {
+            return "";
+        }
+
+        final File thumbnail = thumbnailFileFor(uriString, modified);
+        if (thumbnail.isFile()) {
+            bitmap.recycle();
+            return Uri.fromFile(thumbnail).toString();
+        }
+
+        Bitmap outputBitmap = null;
+        try {
+            outputBitmap = scaleBitmapToThumbnail(bitmap);
+            try (FileOutputStream output = new FileOutputStream(thumbnail)) {
+                outputBitmap.compress(Bitmap.CompressFormat.JPEG, 86, output);
+            }
+            return Uri.fromFile(thumbnail).toString();
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot save recent thumbnail", e);
+            return "";
+        } finally {
+            if (outputBitmap != null && outputBitmap != bitmap) {
+                outputBitmap.recycle();
+            }
+            if (!bitmap.isRecycled()) {
+                bitmap.recycle();
+            }
+        }
+    }
+
+    private String renderPdfThumbnail(Uri uri, String uriString, long modified)
+    {
+        PdfRenderer.Page page = null;
+        try (ParcelFileDescriptor descriptor = openThumbnailDescriptor(uri)) {
+            if (descriptor == null) {
+                return "";
+            }
+            final PdfRenderer renderer = new PdfRenderer(descriptor);
+            try {
+                if (renderer.getPageCount() <= 0) {
+                    return "";
+                }
+
+                page = renderer.openPage(0);
+                final int pageWidth = Math.max(1, page.getWidth());
+                final int pageHeight = Math.max(1, page.getHeight());
+                final int width = MAX_RECENT_THUMBNAIL_WIDTH;
+                final int height = Math.max(1, Math.min(MAX_RECENT_THUMBNAIL_HEIGHT, Math.round((float) pageHeight * width / (float) pageWidth)));
+                final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                final Canvas canvas = new Canvas(bitmap);
+                canvas.drawColor(Color.WHITE);
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                return saveThumbnailBitmap(bitmap, uriString, modified);
+            } finally {
+                if (page != null) {
+                    page.close();
+                }
+                renderer.close();
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.w(TAG, "Cannot render PDF recent thumbnail", e);
+            return "";
+        }
+    }
+
+    private boolean isZipThumbnailImage(String name)
+    {
+        final String lowerName = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        return lowerName.endsWith(".avif")
+                || lowerName.endsWith(".bmp")
+                || lowerName.endsWith(".gif")
+                || lowerName.endsWith(".jpeg")
+                || lowerName.endsWith(".jpg")
+                || lowerName.endsWith(".png")
+                || lowerName.endsWith(".webp");
+    }
+
+    private String extractZipThumbnail(Uri uri, String uriString, long modified)
+    {
+        try (InputStream input = openThumbnailInputStream(uri);
+             ZipInputStream zip = new ZipInputStream(input)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (entry.isDirectory() || !isZipThumbnailImage(entry.getName())) {
+                    continue;
+                }
+
+                final Bitmap bitmap = BitmapFactory.decodeStream(zip);
+                if (bitmap != null) {
+                    return saveThumbnailBitmap(bitmap, uriString, modified);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.w(TAG, "Cannot extract comic recent thumbnail", e);
+        }
+        return "";
+    }
+
+    private String thumbnailUriForRecent(Uri uri, String name, String mimeType, String category, long modified)
+    {
+        if (uri == null) {
+            return "";
+        }
+        final String uriString = uri.toString();
+        if (CATEGORY_PICTURES.equals(category)) {
+            return uriString;
+        }
+
+        final String lowerName = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        if ("application/pdf".equals(mimeType) || lowerName.endsWith(".pdf")) {
+            return renderPdfThumbnail(uri, uriString, modified);
+        }
+        if (lowerName.endsWith(".cbz")) {
+            return extractZipThumbnail(uri, uriString, modified);
+        }
+
+        return "";
+    }
+
+    private void recordRecentDocument(Uri uri, String intentType)
+    {
+        if (uri == null || "fd".equals(uri.getScheme())) {
+            return;
+        }
+
+        try {
+            final String uriString = uri.toString();
+            final String name = displayNameForUri(uri);
+            String mimeType = mimeTypeForUri(uri, intentType);
+            if (mimeType == null || mimeType.isEmpty()) {
+                mimeType = mimeTypeForLibraryName(name);
+            }
+
+            final long modified = modifiedForUri(uri);
+            final JSONObject recent = libraryEntry("file", name, uriString, mimeType, sizeForUri(uri), modified);
+            final String category = categoryForLibraryName(name, mimeType);
+            recent.put("category", category);
+            recent.put("subtitle", "Recently opened");
+            final String thumbnailUri = thumbnailUriForRecent(uri, name, mimeType, category, modified);
+            if (thumbnailUri != null && !thumbnailUri.isEmpty()) {
+                recent.put("thumbnailUri", thumbnailUri);
+            }
+
+            final JSONArray oldRecents = recentDocumentsJson();
+            final JSONArray newRecents = new JSONArray();
+            newRecents.put(recent);
+            for (int i = 0; i < oldRecents.length() && newRecents.length() < MAX_RECENT_DOCUMENTS; ++i) {
+                final JSONObject item = oldRecents.optJSONObject(i);
+                if (item == null || uriString.equals(item.optString("uri"))) {
+                    continue;
+                }
+                newRecents.put(item);
+            }
+
+            libraryPrefs().edit()
+                    .putString(PREF_RECENT_JSON, newRecents.toString())
+                    .remove(PREF_LIBRARY_OVERVIEW_CACHE_JSON)
+                    .apply();
+        } catch (JSONException e) {
+            Log.w(TAG, "Cannot record recent document", e);
+        }
     }
 
     private String documentCountText(int count)
@@ -529,7 +854,7 @@ public class OpenFileActivity extends QtActivity
         return "Android".equals(parentName) && ("data".equals(name) || "obb".equals(name));
     }
 
-    private void scanSupportedFiles(File root, Map<String, FolderSummary> folders)
+    private void scanSupportedFiles(File root, Map<String, FolderSummary> folders, ArrayList<JSONObject> files)
     {
         final ArrayList<File> pending = new ArrayList<>();
         final Set<String> visited = new HashSet<>();
@@ -572,7 +897,14 @@ public class OpenFileActivity extends QtActivity
                         summary = new FolderSummary(parent);
                         folders.put(parentPath, summary);
                     }
-                    summary.add(child, categoryForLibraryName(child.getName(), mimeType));
+                    summary.add(child, categoryForLibraryName(child.getName(), mimeType), isNewModified(child.lastModified()));
+                    if (files != null) {
+                        try {
+                            files.add(scanFileEntry(child));
+                        } catch (JSONException e) {
+                            Log.w(TAG, "Cannot add scanned file", e);
+                        }
+                    }
                 }
             }
         }
@@ -588,6 +920,16 @@ public class OpenFileActivity extends QtActivity
         return counts;
     }
 
+    private JSONObject scanNewCategoryCounts(FolderSummary summary) throws JSONException
+    {
+        final JSONObject counts = new JSONObject();
+        counts.put(CATEGORY_LOCAL, summary.newCountForCategory(CATEGORY_LOCAL));
+        counts.put(CATEGORY_DOCUMENTS, summary.newCountForCategory(CATEGORY_DOCUMENTS));
+        counts.put(CATEGORY_BOOKS, summary.newCountForCategory(CATEGORY_BOOKS));
+        counts.put(CATEGORY_PICTURES, summary.newCountForCategory(CATEGORY_PICTURES));
+        return counts;
+    }
+
     private JSONObject scanFolderEntry(FolderSummary summary) throws JSONException
     {
         final JSONObject entry = libraryEntry("folder", summary.folder.getName(), Uri.fromFile(summary.folder).toString(), "", summary.count, summary.modified);
@@ -595,6 +937,9 @@ public class OpenFileActivity extends QtActivity
         entry.put("category", CATEGORY_LOCAL);
         entry.put("count", summary.count);
         entry.put("counts", scanCategoryCounts(summary));
+        entry.put("isNew", summary.newCount > 0);
+        entry.put("newCount", summary.newCount);
+        entry.put("newCounts", scanNewCategoryCounts(summary));
         entry.put("path", summary.folder.getAbsolutePath());
         return entry;
     }
@@ -606,6 +951,9 @@ public class OpenFileActivity extends QtActivity
         entry.put("category", categoryForLibraryName(file.getName(), mimeType));
         entry.put("subtitle", file.getParent());
         entry.put("path", file.getAbsolutePath());
+        if (CATEGORY_PICTURES.equals(entry.optString("category"))) {
+            entry.put("thumbnailUri", Uri.fromFile(file).toString());
+        }
         return entry;
     }
 
@@ -619,6 +967,8 @@ public class OpenFileActivity extends QtActivity
             state.put("canGoUp", false);
             state.put("needsAllFilesAccess", false);
             state.put("entries", new JSONArray());
+            state.put("allFiles", new JSONArray());
+            state.put("recent", recentDocumentsJson());
         } catch (JSONException ignored) {
         }
         return state.toString();
@@ -654,15 +1004,23 @@ public class OpenFileActivity extends QtActivity
                 state.put("canGoUp", true);
                 state.put("needsAllFilesAccess", false);
                 state.put("entries", entries);
+                state.put("allFiles", entries);
+                state.put("recent", recentDocumentsJson());
                 return state.toString();
             }
 
             final HashMap<String, FolderSummary> folders = new HashMap<>();
-            scanSupportedFiles(Environment.getExternalStorageDirectory(), folders);
+            final ArrayList<JSONObject> allFiles = new ArrayList<>();
+            scanSupportedFiles(Environment.getExternalStorageDirectory(), folders, allFiles);
             final ArrayList<FolderSummary> summaries = new ArrayList<>(folders.values());
             Collections.sort(summaries, (left, right) -> left.folder.getName().compareToIgnoreCase(right.folder.getName()));
             for (FolderSummary summary : summaries) {
                 entries.put(scanFolderEntry(summary));
+            }
+            Collections.sort(allFiles, (left, right) -> left.optString("name").compareToIgnoreCase(right.optString("name")));
+            final JSONArray allFileEntries = new JSONArray();
+            for (JSONObject file : allFiles) {
+                allFileEntries.put(file);
             }
 
             state.put("hasFolder", true);
@@ -671,6 +1029,8 @@ public class OpenFileActivity extends QtActivity
             state.put("canGoUp", false);
             state.put("needsAllFilesAccess", false);
             state.put("entries", entries);
+            state.put("allFiles", allFileEntries);
+            state.put("recent", recentDocumentsJson());
         } catch (Exception e) {
             Log.e(TAG, "Cannot scan shared storage", e);
             try {
@@ -680,6 +1040,8 @@ public class OpenFileActivity extends QtActivity
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", false);
                 state.put("entries", entries);
+                state.put("allFiles", new JSONArray());
+                state.put("recent", recentDocumentsJson());
             } catch (JSONException ignored) {
             }
         }
@@ -699,6 +1061,8 @@ public class OpenFileActivity extends QtActivity
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", true);
                 state.put("entries", entries);
+                state.put("allFiles", new JSONArray());
+                state.put("recent", recentDocumentsJson());
                 return state.toString();
             }
 
@@ -729,7 +1093,12 @@ public class OpenFileActivity extends QtActivity
                         if (Document.MIME_TYPE_DIR.equals(mimeType)) {
                             folders.add(libraryEntry("folder", name, documentUri.toString(), mimeType, size, modified));
                         } else if (isSupportedLibraryDocument(name, mimeType)) {
-                            files.add(libraryEntry("file", name, documentUri.toString(), mimeType, size, modified));
+                            final JSONObject fileEntry = libraryEntry("file", name, documentUri.toString(), mimeType, size, modified);
+                            fileEntry.put("category", categoryForLibraryName(name, mimeType));
+                            if (CATEGORY_PICTURES.equals(fileEntry.optString("category"))) {
+                                fileEntry.put("thumbnailUri", documentUri.toString());
+                            }
+                            files.add(fileEntry);
                         }
                     }
                 }
@@ -751,6 +1120,8 @@ public class OpenFileActivity extends QtActivity
             state.put("canGoUp", libraryStack().size() > 1);
             state.put("needsAllFilesAccess", true);
             state.put("entries", entries);
+            state.put("allFiles", entries);
+            state.put("recent", recentDocumentsJson());
         } catch (Exception e) {
             Log.e(TAG, "Cannot build library", e);
             try {
@@ -760,6 +1131,8 @@ public class OpenFileActivity extends QtActivity
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", true);
                 state.put("entries", entries);
+                state.put("allFiles", new JSONArray());
+                state.put("recent", recentDocumentsJson());
             } catch (JSONException ignored) {
             }
         }
@@ -953,6 +1326,7 @@ public class OpenFileActivity extends QtActivity
         if (uri == null)
             return;
 
+        final Uri originalUri = uri;
         final String scheme = uri.getScheme();
         if (scheme == null) {
             Log.e(TAG, "Cannot open URI with no scheme");
@@ -980,6 +1354,7 @@ public class OpenFileActivity extends QtActivity
         }
 
         Log.v(TAG, "Opening URI with scheme: " + uri.getScheme());
+        recordRecentDocument(originalUri, intentType);
         FileClass.openUri(uri.toString());
     }
 

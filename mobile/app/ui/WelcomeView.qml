@@ -35,9 +35,16 @@ Item {
         "message": i18nc("document library", "Allow all files access to scan your Okular documents like MX Player, or choose one folder manually."),
         "canGoUp": false,
         "needsAllFilesAccess": true,
-        "entries": []
+        "entries": [],
+        "allFiles": [],
+        "recent": []
     })
     readonly property var libraryEntries: libraryState.entries ? libraryState.entries : []
+    readonly property var allFileEntries: libraryState.allFiles ? libraryState.allFiles : []
+    readonly property var recentEntries: libraryState.recent ? libraryState.recent : []
+    property string searchText: ""
+    readonly property bool searching: searchText.trim().length > 0
+    readonly property var sourceLibraryEntries: searching && allFileEntries.length > 0 ? allFileEntries : libraryEntries
     property string activeCategory: "local"
     readonly property var categoryTabs: [
         { "id": "local", "label": i18nc("document library section", "Local") },
@@ -47,9 +54,9 @@ Item {
     ]
     readonly property var filteredLibraryEntries: {
         const entries = []
-        for (let i = 0; i < welcomeView.libraryEntries.length; ++i) {
-            const entry = welcomeView.libraryEntries[i]
-            if (welcomeView.entryMatchesCategory(entry)) {
+        for (let i = 0; i < welcomeView.sourceLibraryEntries.length; ++i) {
+            const entry = welcomeView.sourceLibraryEntries[i]
+            if (welcomeView.entryMatchesCategory(entry) && welcomeView.entryMatchesSearch(entry)) {
                 entries.push(entry)
             }
         }
@@ -60,6 +67,9 @@ Item {
             return welcomeView.libraryState.message
         }
         if (welcomeView.androidLibraryAvailable && welcomeView.libraryState.hasFolder && welcomeView.filteredLibraryEntries.length === 0) {
+            if (welcomeView.searching) {
+                return i18nc("document library empty search", "No readable files match your search.")
+            }
             return welcomeView.libraryState.canGoUp
                     ? i18nc("document library empty category in folder", "No %1 in this folder.", welcomeView.categoryLabel(welcomeView.activeCategory).toLowerCase())
                     : i18nc("document library empty category", "No %1 found in local storage.", welcomeView.categoryLabel(welcomeView.activeCategory).toLowerCase())
@@ -111,6 +121,52 @@ Item {
             return categoryCount(entry, activeCategory) > 0
         }
         return entry.category === activeCategory
+    }
+
+    function entryMatchesSearch(entry) {
+        if (!searching) {
+            return true
+        }
+        const needle = searchText.trim().toLowerCase()
+        const haystack = [
+            entry.name ? entry.name : "",
+            entry.subtitle ? entry.subtitle : "",
+            entry.mimeType ? entry.mimeType : "",
+            entry.path ? entry.path : ""
+        ].join(" ").toLowerCase()
+        return haystack.indexOf(needle) !== -1
+    }
+
+    function isPictureEntry(entry) {
+        return entry && entry.category === "pictures"
+    }
+
+    function openEntry(entry) {
+        if (!entry) {
+            return
+        }
+        if (entry.kind === "folder") {
+            uriHandler.openLibraryFolderUri(entry.uri)
+        } else {
+            uriHandler.openLibraryDocument(entry.uri, entry.mimeType)
+        }
+    }
+
+    function newCount(entry) {
+        if (!entry) {
+            return 0
+        }
+        if (entry.kind === "folder" && entry.newCounts && entry.newCounts[activeCategory] !== undefined) {
+            return entry.newCounts[activeCategory]
+        }
+        if (entry.newCount !== undefined) {
+            return entry.newCount
+        }
+        return entry.isNew ? 1 : 0
+    }
+
+    function hasNewLabel(entry) {
+        return newCount(entry) > 0 || entry.isNew
     }
 
     function entrySubtitle(entry) {
@@ -339,6 +395,137 @@ Item {
             }
         }
 
+        Kirigami.SearchField {
+            id: librarySearchField
+            visible: welcomeView.androidLibraryAvailable && !welcomeView.libraryState.needsAllFilesAccess
+            Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.gridUnit
+            Layout.rightMargin: Kirigami.Units.gridUnit
+            Layout.bottomMargin: Math.round(Kirigami.Units.smallSpacing * 1.2)
+            placeholderText: i18nc("document library search", "Search documents, books, pictures")
+            text: welcomeView.searchText
+            onTextChanged: welcomeView.searchText = text
+        }
+
+        ColumnLayout {
+            visible: welcomeView.androidLibraryAvailable
+                    && !welcomeView.libraryState.needsAllFilesAccess
+                    && !welcomeView.libraryState.canGoUp
+                    && !welcomeView.searching
+                    && welcomeView.recentEntries.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.max(154, Kirigami.Units.gridUnit * 7.6)
+            Layout.maximumHeight: Layout.preferredHeight
+            Layout.leftMargin: Kirigami.Units.gridUnit
+            Layout.rightMargin: Kirigami.Units.gridUnit
+            Layout.bottomMargin: Math.round(Kirigami.Units.smallSpacing * 1.2)
+            spacing: Math.round(Kirigami.Units.smallSpacing * 0.6)
+
+            Controls.Label {
+                text: i18nc("document library section", "Recently opened")
+                color: "#24211f"
+                font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.86)
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+            }
+
+            ListView {
+                id: recentCards
+                Layout.fillWidth: true
+                orientation: ListView.Horizontal
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+                spacing: Kirigami.Units.smallSpacing
+                model: welcomeView.recentEntries
+                Layout.preferredHeight: Math.max(106, Kirigami.Units.gridUnit * 5.3)
+                Layout.fillHeight: false
+
+                delegate: Rectangle {
+                    id: recentCard
+                    width: Math.max(122, Kirigami.Units.gridUnit * 6.1)
+                    height: recentCards.height
+                    radius: Math.round(Kirigami.Units.gridUnit * 0.9)
+                    color: recentTap.pressed ? welcomeView.pressedSurfaceColor : welcomeView.surfaceColor
+                    border.color: welcomeView.quietBorderColor
+                    clip: true
+
+                    ColumnLayout {
+                        anchors {
+                            fill: parent
+                            margins: Math.round(Kirigami.Units.smallSpacing * 0.8)
+                        }
+                        spacing: Math.round(Kirigami.Units.smallSpacing * 0.5)
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: Math.round(Kirigami.Units.gridUnit * 0.72)
+                            color: welcomeView.categoryColor(modelData.category, false)
+                            border.color: Qt.rgba(0.12, 0.10, 0.08, 0.06)
+                            clip: true
+
+                            Image {
+                                anchors.fill: parent
+                                visible: welcomeView.isPictureEntry(modelData)
+                                source: visible ? (modelData.thumbnailUri ? modelData.thumbnailUri : modelData.uri) : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+
+                            Rectangle {
+                                visible: !welcomeView.isPictureEntry(modelData)
+                                anchors.centerIn: parent
+                                width: Math.round(parent.width * 0.40)
+                                height: Math.round(parent.height * 0.56)
+                                radius: 5
+                                color: Qt.rgba(1, 1, 1, 0.74)
+                                border.color: welcomeView.categoryAccent(modelData.category)
+                            }
+
+                            Rectangle {
+                                anchors {
+                                    left: parent.left
+                                    top: parent.top
+                                    margins: 6
+                                }
+                                visible: welcomeView.hasNewLabel(modelData)
+                                width: recentNewLabel.implicitWidth + 12
+                                height: recentNewLabel.implicitHeight + 5
+                                radius: height / 2
+                                color: welcomeView.okularAccentColor
+
+                                Controls.Label {
+                                    id: recentNewLabel
+                                    anchors.centerIn: parent
+                                    text: i18nc("document library new badge", "New")
+                                    color: "#ffffff"
+                                    font.pixelSize: Math.max(9, Math.round(Kirigami.Units.gridUnit * 0.48))
+                                    font.bold: true
+                                }
+                            }
+                        }
+
+                        Controls.Label {
+                            text: modelData.name
+                            elide: Text.ElideMiddle
+                            maximumLineCount: 2
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                            color: "#24211f"
+                            font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.62))
+                            font.weight: Font.Medium
+                        }
+                    }
+
+                    MouseArea {
+                        id: recentTap
+                        anchors.fill: parent
+                        onClicked: welcomeView.openEntry(modelData)
+                    }
+                }
+            }
+        }
+
         RowLayout {
             visible: welcomeView.androidLibraryAvailable && !welcomeView.libraryState.needsAllFilesAccess
             Layout.fillWidth: true
@@ -401,6 +588,7 @@ Item {
 
             delegate: Item {
                 property bool folderRow: modelData.kind === "folder"
+                property bool pictureRow: !folderRow && welcomeView.isPictureEntry(modelData)
 
                 width: libraryList.width
                 height: Math.max(78, Kirigami.Units.gridUnit * 3.75)
@@ -436,6 +624,7 @@ Item {
                             radius: Math.round(width * 0.34)
                             color: welcomeView.categoryColor(modelData.category, folderRow)
                             border.color: Qt.rgba(0.12, 0.10, 0.08, 0.06)
+                            clip: true
 
                             Rectangle {
                                 visible: folderRow
@@ -458,8 +647,16 @@ Item {
                                 opacity: 0.82
                             }
 
+                            Image {
+                                anchors.fill: parent
+                                visible: pictureRow
+                                source: visible ? (modelData.thumbnailUri ? modelData.thumbnailUri : modelData.uri) : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+
                             Rectangle {
-                                visible: !folderRow
+                                visible: !folderRow && !pictureRow
                                 anchors.centerIn: parent
                                 width: Math.round(parent.width * 0.42)
                                 height: Math.round(parent.height * 0.56)
@@ -469,7 +666,7 @@ Item {
                             }
 
                             Rectangle {
-                                visible: !folderRow
+                                visible: !folderRow && !pictureRow
                                 x: Math.round(parent.width * 0.53)
                                 y: Math.round(parent.height * 0.24)
                                 width: Math.round(parent.width * 0.10)
@@ -501,19 +698,42 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            visible: !folderRow
-                            Layout.preferredWidth: Math.max(46, Kirigami.Units.gridUnit * 2.3)
-                            Layout.preferredHeight: Math.max(24, Kirigami.Units.gridUnit * 1.15)
-                            radius: height / 2
-                            color: welcomeView.categoryColor(modelData.category, false)
+                        RowLayout {
+                            spacing: Math.round(Kirigami.Units.smallSpacing * 0.45)
 
-                            Controls.Label {
-                                anchors.centerIn: parent
-                                text: welcomeView.categoryShortLabel(modelData.category)
-                                color: welcomeView.categoryAccent(modelData.category)
-                                font.pixelSize: Math.max(10, Math.round(Kirigami.Units.gridUnit * 0.54))
-                                font.bold: true
+                            Rectangle {
+                                visible: welcomeView.hasNewLabel(modelData)
+                                Layout.preferredWidth: Math.max(46, newListLabel.implicitWidth + 14)
+                                Layout.preferredHeight: Math.max(24, Kirigami.Units.gridUnit * 1.15)
+                                radius: height / 2
+                                color: welcomeView.okularAccentColor
+
+                                Controls.Label {
+                                    id: newListLabel
+                                    anchors.centerIn: parent
+                                    text: welcomeView.newCount(modelData) > 1
+                                            ? i18nc("document library new count badge", "New %1", welcomeView.newCount(modelData))
+                                            : i18nc("document library new badge", "New")
+                                    color: "#ffffff"
+                                    font.pixelSize: Math.max(10, Math.round(Kirigami.Units.gridUnit * 0.54))
+                                    font.bold: true
+                                }
+                            }
+
+                            Rectangle {
+                                visible: !folderRow
+                                Layout.preferredWidth: Math.max(46, Kirigami.Units.gridUnit * 2.3)
+                                Layout.preferredHeight: Math.max(24, Kirigami.Units.gridUnit * 1.15)
+                                radius: height / 2
+                                color: welcomeView.categoryColor(modelData.category, false)
+
+                                Controls.Label {
+                                    anchors.centerIn: parent
+                                    text: welcomeView.categoryShortLabel(modelData.category)
+                                    color: welcomeView.categoryAccent(modelData.category)
+                                    font.pixelSize: Math.max(10, Math.round(Kirigami.Units.gridUnit * 0.54))
+                                    font.bold: true
+                                }
                             }
                         }
                     }
@@ -527,11 +747,7 @@ Item {
                         rightMargin: Kirigami.Units.gridUnit
                     }
                     onClicked: {
-                        if (modelData.kind === "folder") {
-                            uriHandler.openLibraryFolderUri(modelData.uri);
-                        } else {
-                            uriHandler.openLibraryDocument(modelData.uri, modelData.mimeType);
-                        }
+                        welcomeView.openEntry(modelData)
                     }
                 }
             }
