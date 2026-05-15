@@ -146,6 +146,11 @@ public:
     Q_INVOKABLE void resetSearch();
 
     /**
+     * Closes the current document and returns the mobile shell to its library state.
+     */
+    Q_INVOKABLE void close();
+
+    /**
      * Tries to reopen the document with the given password.
      */
     Q_INVOKABLE void setPassword(const QString &password);

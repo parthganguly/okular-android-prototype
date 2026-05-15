@@ -20,6 +20,7 @@ Kirigami.Page {
     readonly property bool compactControls: width < Kirigami.Units.gridUnit * 36
     readonly property real toolbarTopInset: Math.max(0, fileBrowserRoot.topSystemInset)
     readonly property real toolbarContentHeight: Math.max(48, Math.min(54, Kirigami.Units.gridUnit * 2.55))
+    readonly property real thumbnailStripHeight: Math.max(72, Kirigami.Units.gridUnit * 3.9)
     readonly property color readerToolbarSurface: Qt.rgba(0.98, 0.97, 0.94, 0.95)
     readonly property color readerToolbarBorder: Qt.rgba(0.12, 0.10, 0.08, 0.16)
     readonly property color readerToolbarTextColor: "#24211f"
@@ -43,6 +44,12 @@ Kirigami.Page {
         if (root.chromeVisible) {
             autoHideControls.restart()
         }
+    }
+
+    function returnToLibrary() {
+        contextDrawer.drawerOpen = false
+        applicationWindow().controlsVisible = false
+        document.close()
     }
 
     leftPadding: 0
@@ -173,14 +180,13 @@ Kirigami.Page {
             spacing: Math.max(3, Kirigami.Units.smallSpacing / 2)
 
             QQC2.ToolButton {
-                icon.name: "document-open"
-                text: i18n("Open")
+                icon.name: "go-previous"
+                text: i18n("Library")
                 display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
                 icon.color: Kirigami.Theme.textColor
                 Layout.preferredHeight: root.toolbarContentHeight
                 onClicked: {
-                    root.keepControlsWarm()
-                    openDocumentAction.trigger()
+                    root.returnToLibrary()
                 }
             }
 
@@ -275,10 +281,113 @@ Kirigami.Page {
     }
 
     Rectangle {
+        id: topThumbnailStrip
+        z: 100
+        visible: root.chromeVisible && document.pageCount > 1
+        anchors {
+            top: readerToolbar.bottom
+            left: readerToolbar.left
+            right: readerToolbar.right
+            topMargin: Math.round(Kirigami.Units.smallSpacing * 0.75)
+        }
+        height: root.thumbnailStripHeight
+        radius: Math.round(Kirigami.Units.gridUnit * 0.9)
+        color: root.readerToolbarSurface
+        border.color: root.readerToolbarBorder
+        clip: true
+
+        ListView {
+            id: pageThumbnailList
+            anchors {
+                fill: parent
+                leftMargin: Kirigami.Units.smallSpacing
+                rightMargin: Kirigami.Units.smallSpacing
+                topMargin: Kirigami.Units.smallSpacing
+                bottomMargin: Kirigami.Units.smallSpacing
+            }
+            orientation: ListView.Horizontal
+            boundsBehavior: Flickable.StopAtBounds
+            spacing: Kirigami.Units.smallSpacing
+            model: document.pageCount
+            currentIndex: document.currentPage
+            clip: true
+
+            delegate: Rectangle {
+                id: thumbnailCard
+                required property int index
+
+                width: Math.round(topThumbnailStrip.height * 0.62)
+                height: pageThumbnailList.height
+                radius: Math.round(Kirigami.Units.smallSpacing * 0.8)
+                color: index === document.currentPage ? Qt.rgba(0.91, 0.12, 0.39, 0.12) : "#ffffff"
+                border.width: index === document.currentPage ? 2 : 1
+                border.color: index === document.currentPage ? root.readerToolbarAccentColor : root.readerToolbarBorder
+                clip: true
+
+                Okular.ThumbnailItem {
+                    anchors {
+                        fill: parent
+                        margins: Math.round(Kirigami.Units.smallSpacing * 0.45)
+                    }
+                    document: root.document
+                    pageNumber: thumbnailCard.index
+                }
+
+                Rectangle {
+                    anchors {
+                        right: parent.right
+                        bottom: parent.bottom
+                        margins: 2
+                    }
+                    width: Math.max(18, pageNumberLabel.implicitWidth + 8)
+                    height: Math.max(16, pageNumberLabel.implicitHeight + 3)
+                    radius: height / 2
+                    color: index === document.currentPage ? root.readerToolbarAccentColor : Qt.rgba(0.98, 0.97, 0.94, 0.88)
+
+                    QQC2.Label {
+                        id: pageNumberLabel
+                        anchors.centerIn: parent
+                        text: thumbnailCard.index + 1
+                        color: thumbnailCard.index === document.currentPage ? "#ffffff" : root.readerToolbarMutedColor
+                        font.pixelSize: Math.max(9, Math.round(Kirigami.Units.gridUnit * 0.5))
+                        font.bold: thumbnailCard.index === document.currentPage
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        document.currentPage = thumbnailCard.index
+                        pageThumbnailList.currentIndex = thumbnailCard.index
+                        pageThumbnailList.positionViewAtIndex(thumbnailCard.index, ListView.Center)
+                        root.keepControlsWarm()
+                    }
+                }
+            }
+
+            onVisibleChanged: {
+                if (visible) {
+                    positionViewAtIndex(document.currentPage, ListView.Center)
+                }
+            }
+        }
+
+        Connections {
+            target: document
+            function onCurrentPageChanged() {
+                if (topThumbnailStrip.visible) {
+                    pageThumbnailList.currentIndex = document.currentPage
+                    pageThumbnailList.positionViewAtIndex(document.currentPage, ListView.Center)
+                }
+            }
+        }
+    }
+
+    Rectangle {
         z: 99
         visible: readerToolbar.visible
         anchors {
-            top: readerToolbar.bottom
+            top: topThumbnailStrip.visible ? topThumbnailStrip.bottom : readerToolbar.bottom
             left: parent.left
             right: parent.right
         }

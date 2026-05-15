@@ -1,6 +1,7 @@
 package org.kde.something;
 
 import android.content.ContentResolver;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -982,6 +983,41 @@ public class OpenFileActivity extends QtActivity
         FileClass.openUri(uri.toString());
     }
 
+    private Uri uriFromIntent(Intent intent)
+    {
+        if (intent == null) {
+            return null;
+        }
+
+        final Uri dataUri = intent.getData();
+        if (dataUri != null) {
+            return dataUri;
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                final Uri stream = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
+                if (stream != null) {
+                    return stream;
+                }
+            } else {
+                final Object stream = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                if (stream instanceof Uri) {
+                    return (Uri)stream;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot read intent stream URI", e);
+        }
+
+        final ClipData clipData = intent.getClipData();
+        if (clipData != null && clipData.getItemCount() > 0 && clipData.getItemAt(0) != null) {
+            return clipData.getItemAt(0).getUri();
+        }
+
+        return null;
+    }
+
     public void handleViewIntent() {
         final Intent bundleIntent = getIntent();
         if (bundleIntent == null)
@@ -989,8 +1025,10 @@ public class OpenFileActivity extends QtActivity
 
         final String action = bundleIntent.getAction();
         Log.v(TAG, "Handling action: " + action);
-        if (Intent.ACTION_VIEW.equals(action)) {
-            displayUri(bundleIntent.getData(), bundleIntent.getType());
+        if (Intent.ACTION_VIEW.equals(action)
+                || Intent.ACTION_SEND.equals(action)
+                || Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            displayUri(uriFromIntent(bundleIntent), bundleIntent.getType());
         }
     }
 

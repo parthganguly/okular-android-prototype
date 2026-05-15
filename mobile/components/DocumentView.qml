@@ -703,6 +703,54 @@ Item {
                 onTriggered: continuousList.updateCurrentPageFromPosition()
             }
         }
+
+        MouseArea {
+            id: continuousPanArea
+            anchors.fill: parent
+            enabled: root.continuousMode && root.continuousZoom > root.continuousMinZoom + 0.01
+            preventStealing: true
+            acceptedButtons: Qt.LeftButton
+
+            property real previousX: 0
+            property real previousY: 0
+            property real startX: 0
+            property real startY: 0
+            property bool moved: false
+
+            onPressed: (mouse) => {
+                previousX = startX = mouse.x
+                previousY = startY = mouse.y
+                moved = false
+            }
+
+            onPositionChanged: (mouse) => {
+                const dx = mouse.x - previousX
+                const dy = mouse.y - previousY
+
+                continuousList.contentX = continuousList.clampContentX(continuousList.contentX - dx)
+                continuousList.contentY = continuousList.clampContentY(continuousList.contentY - dy)
+
+                if (Math.abs(mouse.x - startX) > 8 || Math.abs(mouse.y - startY) > 8) {
+                    moved = true
+                }
+
+                previousX = mouse.x
+                previousY = mouse.y
+            }
+
+            onReleased: {
+                continuousList.updateCurrentPageFromPosition()
+                continuousList.preloadVisiblePages()
+                if (!moved) {
+                    root.clicked()
+                }
+            }
+
+            onCanceled: {
+                continuousList.returnToBounds()
+                continuousList.updateCurrentPageFromPosition()
+            }
+        }
     }
 
     Timer {

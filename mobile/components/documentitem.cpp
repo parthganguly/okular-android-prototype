@@ -204,6 +204,28 @@ bool DocumentItem::isOpened() const
     return m_document->isOpened();
 }
 
+void DocumentItem::close()
+{
+    if (!m_document->isOpened()) {
+        return;
+    }
+
+    m_document->closeDocument();
+    m_tocModel->clear();
+    m_matchingPages.clear();
+    m_needsPassword = false;
+
+    Q_EMIT matchingPagesChanged();
+    Q_EMIT urlChanged();
+    Q_EMIT pageCountChanged();
+    Q_EMIT openedChanged();
+    Q_EMIT needsPasswordChanged();
+    Q_EMIT supportsSearchingChanged();
+    Q_EMIT windowTitleForDocumentChanged();
+    Q_EMIT bookmarkedPagesChanged();
+    Q_EMIT currentPageChanged();
+}
+
 int DocumentItem::pageCount() const
 {
     return m_document->pages();
