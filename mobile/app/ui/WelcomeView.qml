@@ -21,6 +21,7 @@ Item {
 
     anchors.fill: parent
     readonly property bool androidLibraryAvailable: typeof uriHandler !== "undefined" && uriHandler.libraryJson !== undefined
+    readonly property real topInset: androidLibraryAvailable && typeof fileBrowserRoot !== "undefined" ? fileBrowserRoot.topSystemInset : 0
     readonly property real bottomInset: androidLibraryAvailable && typeof fileBrowserRoot !== "undefined" ? fileBrowserRoot.bottomSystemInset : 0
     readonly property color libraryBackgroundColor: "#fbfaf7"
     readonly property color surfaceColor: "#ffffff"
@@ -255,7 +256,7 @@ Item {
     ColumnLayout {
         anchors {
             fill: parent
-            topMargin: welcomeView.androidLibraryAvailable ? Kirigami.Units.smallSpacing : Kirigami.Units.gridUnit
+            topMargin: welcomeView.androidLibraryAvailable ? welcomeView.topInset + Kirigami.Units.smallSpacing : Kirigami.Units.gridUnit
             leftMargin: welcomeView.androidLibraryAvailable ? 0 : Kirigami.Units.gridUnit
             rightMargin: welcomeView.androidLibraryAvailable ? 0 : Kirigami.Units.gridUnit
             bottomMargin: welcomeView.androidLibraryAvailable ? Math.max(0, welcomeView.bottomInset) : Kirigami.Units.gridUnit

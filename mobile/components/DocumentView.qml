@@ -28,8 +28,9 @@ Item {
     readonly property int fillScreenMode: 2
     readonly property real continuousMinZoom: 1
     readonly property real continuousMaxZoom: 4
-    readonly property real pageHorizontalGutter: Math.max(12, Math.min(28, Math.round(width * 0.035)))
-    readonly property real pageVerticalGutter: Math.max(10, Math.min(22, Math.round(width * 0.025)))
+    // A tiny guard keeps one-pixel document borders visible without wasting reader space.
+    readonly property real pageHorizontalGutter: Math.max(1, Math.min(3, Math.round(width * 0.006)))
+    readonly property real pageVerticalGutter: Math.max(0, Math.min(2, Math.round(width * 0.003)))
     signal clicked
 
     signal urlOpened

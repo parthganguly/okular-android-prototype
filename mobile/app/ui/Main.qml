@@ -27,6 +27,12 @@ Kirigami.ApplicationWindow {
 
     wideScreen: width > columnWidth * 5
     visible: true
+    // Qt 6.9 auto-pads safe areas; Okular handles them per screen instead.
+    topPadding: 0
+    leftPadding: 0
+    rightPadding: 0
+    bottomPadding: 0
+    color: documentItem.opened ? "#111316" : "#fbfaf7"
     controlsVisible: false
 
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None

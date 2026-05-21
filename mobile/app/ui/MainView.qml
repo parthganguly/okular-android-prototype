@@ -81,9 +81,7 @@ Kirigami.Page {
         id: pageArea
         fitMode: fileBrowserRoot.readerFitMode
         continuousMode: fileBrowserRoot.readerContinuousMode
-        anchors {
-            fill: parent
-        }
+        anchors.fill: parent
 
         onClicked: {
             if (root.chromeVisible) {
