@@ -28,9 +28,27 @@ Item {
     readonly property int fillScreenMode: 2
     readonly property real continuousMinZoom: 1
     readonly property real continuousMaxZoom: 4
+    readonly property real pageHorizontalGutter: Math.max(12, Math.min(28, Math.round(width * 0.035)))
+    readonly property real pageVerticalGutter: Math.max(10, Math.min(22, Math.round(width * 0.025)))
     signal clicked
 
     signal urlOpened
+
+    function safeViewportWidth(containerWidth) {
+        return Math.max(1, containerWidth - pageHorizontalGutter * 2)
+    }
+
+    function safeViewportHeight(containerHeight) {
+        return Math.max(1, containerHeight - pageVerticalGutter * 2)
+    }
+
+    function pageCanvasWidth(pageWidth) {
+        return Math.max(1, pageWidth + pageHorizontalGutter * 2)
+    }
+
+    function pageCanvasHeight(pageHeight) {
+        return Math.max(1, pageHeight + pageVerticalGutter * 2)
+    }
 
     clip: true
     onContinuousModeChanged: {
@@ -69,25 +87,27 @@ Item {
 
         function fittedPageSize() {
             const ratio = Math.max(0.01, mouseArea.currPageDelegate.pageRatio)
-            let pageWidth = flick.width
+            const viewportWidth = root.safeViewportWidth(flick.width)
+            const viewportHeight = root.safeViewportHeight(flick.height)
+            let pageWidth = viewportWidth
             let pageHeight = pageWidth / ratio
 
             if (root.fitMode === root.fitPageMode) {
-                const heightFromWidth = flick.width / ratio
-                if (heightFromWidth <= flick.height) {
-                    pageWidth = flick.width
+                const heightFromWidth = viewportWidth / ratio
+                if (heightFromWidth <= viewportHeight) {
+                    pageWidth = viewportWidth
                     pageHeight = heightFromWidth
                 } else {
-                    pageHeight = flick.height
+                    pageHeight = viewportHeight
                     pageWidth = pageHeight * ratio
                 }
             } else if (root.fitMode === root.fillScreenMode) {
-                const heightFromWidth = flick.width / ratio
-                if (heightFromWidth >= flick.height) {
-                    pageWidth = flick.width
+                const heightFromWidth = viewportWidth / ratio
+                if (heightFromWidth >= viewportHeight) {
+                    pageWidth = viewportWidth
                     pageHeight = heightFromWidth
                 } else {
-                    pageHeight = flick.height
+                    pageHeight = viewportHeight
                     pageWidth = pageHeight * ratio
                 }
             }
@@ -99,8 +119,8 @@ Item {
             const size = fittedPageSize()
             mouseArea.pageWidth = size.width
             mouseArea.pageHeight = size.height
-            flick.contentWidth = Math.max(flick.width, size.width)
-            flick.contentHeight = Math.max(flick.height, size.height)
+            flick.contentWidth = Math.max(flick.width, root.pageCanvasWidth(size.width))
+            flick.contentHeight = Math.max(flick.height, root.pageCanvasHeight(size.height))
             flick.returnToBounds()
             preloadTimer.restart()
         }
@@ -179,11 +199,11 @@ Item {
                 flick.returnToBounds();
             }
             onPinchFinished: (pinch) => {
-                const newWidth = Math.max(flick.width + 1, initialWidth * mouseArea.scale)
-                const newHeight = Math.max(flick.height, initialHeight * mouseArea.scale)
+                const newWidth = Math.max(root.safeViewportWidth(flick.width) + 1, initialWidth * mouseArea.scale)
+                const newHeight = Math.max(root.safeViewportHeight(flick.height), initialHeight * mouseArea.scale)
                 mouseArea.pageWidth = newWidth
                 mouseArea.pageHeight = newHeight
-                flick.resizeContent(Math.max(flick.width, newWidth), Math.max(flick.height, newHeight), pinch.center);
+                flick.resizeContent(Math.max(flick.width, root.pageCanvasWidth(newWidth)), Math.max(flick.height, root.pageCanvasHeight(newHeight)), pinch.center);
                 mouseArea.scale = 1;
 
                 resizeTimer.stop()
@@ -274,17 +294,17 @@ Item {
                         //generate factors between 0.8 and 1.2
                         var factor = (((wheel.angleDelta.y / 120)+1) / 5 )+ 0.8;
 
-                        var newWidth = flick.contentWidth * factor;
-                        var newHeight = flick.contentHeight * factor;
+                        var newWidth = mouseArea.pageWidth * factor;
+                        var newHeight = mouseArea.pageHeight * factor;
 
-                        if (newWidth < flick.width || newHeight < flick.height ||
+                        if (newWidth < root.safeViewportWidth(flick.width) || newHeight < root.safeViewportHeight(flick.height) ||
                             newHeight > flick.height * 3) {
                             return;
                         }
 
                         mouseArea.pageWidth = newWidth;
                         mouseArea.pageHeight = newHeight;
-                        flick.resizeContent(newWidth, newHeight, Qt.point(wheel.x, wheel.y));
+                        flick.resizeContent(root.pageCanvasWidth(newWidth), root.pageCanvasHeight(newHeight), Qt.point(wheel.x, wheel.y));
                         flick.returnToBounds();
                         resizeTimer.stop();
                     } else {
@@ -535,31 +555,33 @@ Item {
             reuseItems: true
             model: root.document && root.document.opened ? root.document.pageCount : 0
             currentIndex: 0
-            contentWidth: Math.max(width, width * root.continuousZoom)
+            contentWidth: Math.max(width, root.pageCanvasWidth(root.safeViewportWidth(width) * root.continuousZoom))
             property bool updatingCurrentPage: false
 
             function pageSizeForRatio(ratio) {
                 const safeRatio = Math.max(0.01, ratio)
                 const zoom = Math.max(root.continuousMinZoom, Math.min(root.continuousMaxZoom, root.continuousZoom))
-                let pageWidth = continuousList.width
+                const viewportWidth = root.safeViewportWidth(continuousList.width)
+                const viewportHeight = root.safeViewportHeight(continuousList.height)
+                let pageWidth = viewportWidth
                 let pageHeight = pageWidth / safeRatio
 
                 if (root.fitMode === root.fitPageMode) {
-                    const heightFromWidth = continuousList.width / safeRatio
-                    if (heightFromWidth <= continuousList.height) {
-                        pageWidth = continuousList.width
+                    const heightFromWidth = viewportWidth / safeRatio
+                    if (heightFromWidth <= viewportHeight) {
+                        pageWidth = viewportWidth
                         pageHeight = heightFromWidth
                     } else {
-                        pageHeight = continuousList.height
+                        pageHeight = viewportHeight
                         pageWidth = pageHeight * safeRatio
                     }
                 } else if (root.fitMode === root.fillScreenMode) {
-                    const heightFromWidth = continuousList.width / safeRatio
-                    if (heightFromWidth >= continuousList.height) {
-                        pageWidth = continuousList.width
+                    const heightFromWidth = viewportWidth / safeRatio
+                    if (heightFromWidth >= viewportHeight) {
+                        pageWidth = viewportWidth
                         pageHeight = heightFromWidth
                     } else {
-                        pageHeight = continuousList.height
+                        pageHeight = viewportHeight
                         pageWidth = pageHeight * safeRatio
                     }
                 }
@@ -671,8 +693,8 @@ Item {
             delegate: PageView {
                 id: continuousPage
                 property var fittedPageSize: continuousList.pageSizeForRatio(pageRatio)
-                width: Math.max(continuousList.width, fittedPageSize.width)
-                height: Math.max(1, fittedPageSize.height)
+                width: Math.max(continuousList.width, root.pageCanvasWidth(fittedPageSize.width))
+                height: Math.max(1, root.pageCanvasHeight(fittedPageSize.height))
                 document: root.document
                 pageNumber: index
                 trimMargins: root.trimMargins

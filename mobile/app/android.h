@@ -53,6 +53,7 @@ public:
     Q_INVOKABLE void openLibraryDocument(const QString &uri, const QString &mimeType);
     Q_INVOKABLE void shareCurrentDocument();
     Q_INVOKABLE bool deleteCurrentDocument();
+    Q_INVOKABLE void clearCurrentDocument();
 
     void updateLibraryJson(const QString &json)
     {

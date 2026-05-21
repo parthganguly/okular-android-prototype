@@ -168,6 +168,13 @@ class FileClass
     {
         return currentActivity != null && currentActivity.deleteCurrentDocument();
     }
+
+    public static void clearCurrentDocument()
+    {
+        if (currentActivity != null) {
+            currentActivity.clearCurrentDocument();
+        }
+    }
 }
 
 public class OpenFileActivity extends QtActivity
@@ -278,7 +285,9 @@ public class OpenFileActivity extends QtActivity
         super.onCreate(savedInstanceState);
         FileClass.setActivity(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            readerBackCallback = () -> FileClass.closeDocument();
+            readerBackCallback = () -> handleBackRequest();
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, readerBackCallback);
+            readerBackCallbackRegistered = true;
         }
         applyReaderMode();
     }
@@ -286,12 +295,22 @@ public class OpenFileActivity extends QtActivity
     @Override
     public void onBackPressed()
     {
-        if (readerModeEnabled) {
+        if (hasActiveReaderDocument()) {
             FileClass.closeDocument();
             return;
         }
 
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && readerBackCallbackRegistered && readerBackCallback != null) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(readerBackCallback);
+            readerBackCallbackRegistered = false;
+        }
+        super.onDestroy();
     }
 
     private SharedPreferences libraryPrefs()
@@ -450,6 +469,15 @@ public class OpenFileActivity extends QtActivity
         publishLibrary();
         Toast.makeText(this, "Document deleted", Toast.LENGTH_SHORT).show();
         return true;
+    }
+
+    public void clearCurrentDocument()
+    {
+        currentDocumentUri = null;
+        currentDocumentMimeType = "";
+        currentDocumentName = "";
+        readerModeEnabled = false;
+        applyReaderMode();
     }
 
     private ArrayList<String> libraryStack()
@@ -1306,22 +1334,21 @@ public class OpenFileActivity extends QtActivity
     public void setReaderMode(boolean enabled)
     {
         readerModeEnabled = enabled;
-        updateReaderBackCallback();
         applyReaderMode();
     }
 
-    private void updateReaderBackCallback()
+    private boolean hasActiveReaderDocument()
     {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || readerBackCallback == null) {
-            return;
-        }
+        return readerModeEnabled || currentDocumentUri != null;
+    }
 
-        if (readerModeEnabled && !readerBackCallbackRegistered) {
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, readerBackCallback);
-            readerBackCallbackRegistered = true;
-        } else if (!readerModeEnabled && readerBackCallbackRegistered) {
-            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(readerBackCallback);
-            readerBackCallbackRegistered = false;
+    private void handleBackRequest()
+    {
+        Log.v(TAG, "Back requested; readerModeEnabled=" + readerModeEnabled + ", hasDocument=" + (currentDocumentUri != null));
+        if (hasActiveReaderDocument()) {
+            FileClass.closeDocument();
+        } else {
+            moveTaskToBack(false);
         }
     }
 

@@ -77,6 +77,11 @@ bool URIHandler::deleteCurrentDocument()
     return QJniObject::callStaticMethod<jboolean>("org/kde/something/FileClass", "deleteCurrentDocument", "()Z");
 }
 
+void URIHandler::clearCurrentDocument()
+{
+    QJniObject::callStaticMethod<void>("org/kde/something/FileClass", "clearCurrentDocument", "()V");
+}
+
 void Java_org_kde_something_FileClass_openUri(JNIEnv *env, jobject /*obj*/, jstring uri)
 {
     jboolean isCopy = false;

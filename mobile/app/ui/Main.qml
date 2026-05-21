@@ -143,6 +143,8 @@ Kirigami.ApplicationWindow {
         function onCloseRequested() {
             if (documentItem.opened) {
                 mainView.returnToLibrary()
+            } else if (typeof uriHandler !== "undefined") {
+                uriHandler.clearCurrentDocument()
             }
         }
     }

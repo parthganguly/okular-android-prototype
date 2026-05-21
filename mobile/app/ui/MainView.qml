@@ -64,6 +64,9 @@ Kirigami.Page {
         contextDrawer.drawerOpen = false
         applicationWindow().controlsVisible = false
         document.close()
+        if (typeof uriHandler !== "undefined") {
+            uriHandler.clearCurrentDocument()
+        }
     }
 
     leftPadding: 0
