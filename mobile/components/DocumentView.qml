@@ -29,7 +29,7 @@ Item {
     readonly property real continuousMinZoom: 1
     readonly property real continuousMaxZoom: 4
     // A tiny guard keeps one-pixel document borders visible without wasting reader space.
-    readonly property real pageHorizontalGutter: Math.max(1, Math.min(3, Math.round(width * 0.006)))
+    readonly property real pageHorizontalGutter: Math.max(4, Math.min(8, Math.round(width * 0.008)))
     readonly property real pageVerticalGutter: Math.max(0, Math.min(2, Math.round(width * 0.003)))
     signal clicked
 

@@ -26,6 +26,7 @@ Kirigami.Page {
     readonly property color readerToolbarTextColor: "#24211f"
     readonly property color readerToolbarMutedColor: Qt.rgba(0.10, 0.09, 0.08, 0.62)
     readonly property color readerToolbarAccentColor: "#e91e63"
+    property bool moreActionsVisible: false
 
     function revealControls() {
         if (!document.opened) {
@@ -37,6 +38,7 @@ Kirigami.Page {
 
     function hideControls() {
         autoHideControls.stop()
+        root.moreActionsVisible = false
         applicationWindow().controlsVisible = false
     }
 
@@ -60,8 +62,19 @@ Kirigami.Page {
         }
     }
 
+    function toggleBookmark() {
+        root.keepControlsWarm()
+        pageArea.page.bookmarked = !pageArea.page.bookmarked
+    }
+
+    function toggleCrop() {
+        root.keepControlsWarm()
+        pageArea.trimMargins = !pageArea.trimMargins
+    }
+
     function returnToLibrary() {
         contextDrawer.drawerOpen = false
+        root.moreActionsVisible = false
         applicationWindow().controlsVisible = false
         document.close()
         if (typeof uriHandler !== "undefined") {
@@ -266,27 +279,23 @@ Kirigami.Page {
             QQC2.ToolButton {
                 icon.name: pageArea.page.bookmarked ? "bookmark-remove" : "bookmarks-organize"
                 text: pageArea.page.bookmarked ? i18n("Saved") : i18n("Mark")
+                visible: !root.compactControls
                 display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
                 icon.color: Kirigami.Theme.textColor
                 checkable: true
                 checked: pageArea.page.bookmarked
                 Layout.preferredHeight: root.toolbarContentHeight
-                onClicked: {
-                    root.keepControlsWarm()
-                    pageArea.page.bookmarked = !pageArea.page.bookmarked
-                }
+                onClicked: root.toggleBookmark()
             }
 
             QQC2.ToolButton {
                 text: i18n("Crop")
+                visible: !root.compactControls
                 display: QQC2.AbstractButton.TextOnly
                 checkable: true
                 checked: pageArea.trimMargins
                 Layout.preferredHeight: root.toolbarContentHeight
-                onClicked: {
-                    root.keepControlsWarm()
-                    pageArea.trimMargins = checked
-                }
+                onClicked: root.toggleCrop()
             }
 
             QQC2.ToolButton {
@@ -295,6 +304,7 @@ Kirigami.Page {
                 checkable: true
                 checked: fileBrowserRoot.readerContinuousMode
                 Layout.preferredHeight: root.toolbarContentHeight
+                Layout.preferredWidth: root.compactControls ? Kirigami.Units.gridUnit * 3.65 : implicitWidth
                 onClicked: {
                     root.keepControlsWarm()
                     fileBrowserRoot.readerContinuousMode = checked
@@ -308,6 +318,7 @@ Kirigami.Page {
                 text: pageArea.fitMode === fileBrowserRoot.fitWidthMode ? i18n("Width") : pageArea.fitMode === fileBrowserRoot.fitPageMode ? i18n("Page") : i18n("Fill")
                 display: QQC2.AbstractButton.TextOnly
                 Layout.preferredHeight: root.toolbarContentHeight
+                Layout.preferredWidth: root.compactControls ? Kirigami.Units.gridUnit * 3.35 : implicitWidth
                 onClicked: {
                     root.keepControlsWarm()
                     fileBrowserRoot.readerFitMode = (fileBrowserRoot.readerFitMode + 1) % 3
@@ -316,6 +327,7 @@ Kirigami.Page {
 
             QQC2.ToolButton {
                 text: i18n("Share")
+                visible: !root.compactControls
                 display: QQC2.AbstractButton.TextOnly
                 Layout.preferredHeight: root.toolbarContentHeight
                 onClicked: root.shareCurrentDocument()
@@ -323,9 +335,23 @@ Kirigami.Page {
 
             QQC2.ToolButton {
                 text: root.compactControls ? i18n("Del") : i18n("Delete")
+                visible: !root.compactControls
                 display: QQC2.AbstractButton.TextOnly
                 Layout.preferredHeight: root.toolbarContentHeight
                 onClicked: root.confirmDeleteCurrentDocument()
+            }
+
+            QQC2.ToolButton {
+                id: moreActionsButton
+                visible: root.compactControls
+                text: "\u22ee"
+                display: QQC2.AbstractButton.TextOnly
+                Layout.preferredWidth: root.toolbarContentHeight
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: {
+                    root.keepControlsWarm()
+                    root.moreActionsVisible = !root.moreActionsVisible
+                }
             }
 
             QQC2.ToolButton {
@@ -337,6 +363,75 @@ Kirigami.Page {
                 onClicked: {
                     contextDrawer.drawerOpen = !contextDrawer.drawerOpen
                     root.keepControlsWarm()
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: moreActionsPanel
+        z: 101
+        visible: root.chromeVisible && root.compactControls && root.moreActionsVisible
+        anchors {
+            top: readerToolbar.bottom
+            right: readerToolbar.right
+            topMargin: Math.round(Kirigami.Units.smallSpacing * 0.75)
+        }
+        width: Math.min(root.width - Kirigami.Units.gridUnit * 2, Kirigami.Units.gridUnit * 10.5)
+        height: moreActionsColumn.implicitHeight + Kirigami.Units.smallSpacing * 2
+        radius: Math.round(Kirigami.Units.gridUnit * 0.75)
+        color: root.readerToolbarSurface
+        border.color: root.readerToolbarBorder
+
+        ColumnLayout {
+            id: moreActionsColumn
+            anchors {
+                fill: parent
+                margins: Kirigami.Units.smallSpacing
+            }
+            spacing: 0
+
+            QQC2.ToolButton {
+                text: pageArea.page.bookmarked ? i18n("Remove Bookmark") : i18n("Bookmark")
+                checkable: true
+                checked: pageArea.page.bookmarked
+                display: QQC2.AbstractButton.TextOnly
+                Layout.fillWidth: true
+                onClicked: {
+                    root.toggleBookmark()
+                    root.moreActionsVisible = false
+                }
+            }
+
+            QQC2.ToolButton {
+                text: i18n("Crop Margins")
+                checkable: true
+                checked: pageArea.trimMargins
+                display: QQC2.AbstractButton.TextOnly
+                Layout.fillWidth: true
+                onClicked: {
+                    root.toggleCrop()
+                    root.moreActionsVisible = false
+                }
+            }
+
+            QQC2.ToolButton {
+                text: i18n("Share")
+                display: QQC2.AbstractButton.TextOnly
+                Layout.fillWidth: true
+                onClicked: {
+                    root.shareCurrentDocument()
+                    root.moreActionsVisible = false
+                }
+            }
+
+            QQC2.ToolButton {
+                text: i18n("Delete")
+                display: QQC2.AbstractButton.TextOnly
+                Layout.fillWidth: true
+                onClicked: {
+                    root.confirmDeleteCurrentDocument()
+                    root.moreActionsVisible = false
                 }
             }
         }
