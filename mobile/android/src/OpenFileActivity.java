@@ -22,6 +22,7 @@ import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -286,15 +287,36 @@ public class OpenFileActivity extends QtActivity
         FileClass.setActivity(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             readerBackCallback = () -> handleBackRequest();
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, readerBackCallback);
+            try {
+                getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, readerBackCallback);
+                Log.v(TAG, "Registered overlay Android back callback");
+            } catch (RuntimeException e) {
+                Log.w(TAG, "Cannot register overlay back callback; falling back to default", e);
+                getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, readerBackCallback);
+            }
             readerBackCallbackRegistered = true;
         }
         applyReaderMode();
     }
 
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event)
+    {
+        if (event != null && event.getKeyCode() == KeyEvent.KEYCODE_BACK && hasActiveReaderDocument()) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                Log.v(TAG, "Back key event requested document close");
+                FileClass.closeDocument();
+            }
+            return true;
+        }
+
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     public void onBackPressed()
     {
+        Log.v(TAG, "onBackPressed; readerModeEnabled=" + readerModeEnabled + ", hasDocument=" + (currentDocumentUri != null));
         if (hasActiveReaderDocument()) {
             FileClass.closeDocument();
             return;
