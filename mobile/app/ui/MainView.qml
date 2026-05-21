@@ -46,6 +46,20 @@ Kirigami.Page {
         }
     }
 
+    function shareCurrentDocument() {
+        if (typeof uriHandler !== "undefined") {
+            root.keepControlsWarm()
+            uriHandler.shareCurrentDocument()
+        }
+    }
+
+    function confirmDeleteCurrentDocument() {
+        if (typeof uriHandler !== "undefined") {
+            root.keepControlsWarm()
+            deleteDocumentDialog.open()
+        }
+    }
+
     function returnToLibrary() {
         contextDrawer.drawerOpen = false
         applicationWindow().controlsVisible = false
@@ -91,6 +105,10 @@ Kirigami.Page {
 
         function onNotice(text, duration) {
             inlineMessage.showMessage(Kirigami.MessageType.Information, text,  duration);
+        }
+
+        function onUrlChanged() {
+            pageArea.trimMargins = false
         }
     }
 
@@ -180,11 +198,40 @@ Kirigami.Page {
             spacing: Math.max(3, Kirigami.Units.smallSpacing / 2)
 
             QQC2.ToolButton {
-                icon.name: "go-previous"
+                id: libraryBackButton
                 text: i18n("Library")
-                display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
-                icon.color: Kirigami.Theme.textColor
+                display: QQC2.AbstractButton.TextOnly
+                Layout.preferredWidth: root.compactControls
+                        ? root.toolbarContentHeight
+                        : Math.max(root.toolbarContentHeight * 1.9, libraryBackButtonContent.implicitWidth + 18)
                 Layout.preferredHeight: root.toolbarContentHeight
+                contentItem: RowLayout {
+                    id: libraryBackButtonContent
+                    spacing: Math.max(2, Math.round(Kirigami.Units.smallSpacing * 0.25))
+
+                    QQC2.Label {
+                        text: "\u2039"
+                        color: Kirigami.Theme.textColor
+                        font.pixelSize: Math.round(root.toolbarContentHeight * 0.82)
+                        font.weight: Font.DemiBold
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        Layout.preferredWidth: Math.round(root.toolbarContentHeight * 0.42)
+                        Layout.fillHeight: true
+                    }
+
+                    QQC2.Label {
+                        visible: !root.compactControls
+                        text: libraryBackButton.text
+                        color: Kirigami.Theme.textColor
+                        font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.70))
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
                 onClicked: {
                     root.returnToLibrary()
                 }
@@ -267,6 +314,20 @@ Kirigami.Page {
             }
 
             QQC2.ToolButton {
+                text: i18n("Share")
+                display: QQC2.AbstractButton.TextOnly
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: root.shareCurrentDocument()
+            }
+
+            QQC2.ToolButton {
+                text: root.compactControls ? i18n("Del") : i18n("Delete")
+                display: QQC2.AbstractButton.TextOnly
+                Layout.preferredHeight: root.toolbarContentHeight
+                onClicked: root.confirmDeleteCurrentDocument()
+            }
+
+            QQC2.ToolButton {
                 icon.name: "view-preview"
                 text: i18n("Nav")
                 display: root.compactControls ? QQC2.AbstractButton.IconOnly : QQC2.AbstractButton.TextBesideIcon
@@ -276,6 +337,27 @@ Kirigami.Page {
                     contextDrawer.drawerOpen = !contextDrawer.drawerOpen
                     root.keepControlsWarm()
                 }
+            }
+        }
+    }
+
+    QQC2.Dialog {
+        id: deleteDocumentDialog
+        modal: true
+        focus: true
+        anchors.centerIn: parent
+        title: i18n("Delete File?")
+        standardButtons: QQC2.Dialog.Yes | QQC2.Dialog.Cancel
+
+        contentItem: QQC2.Label {
+            text: i18n("Delete this file from storage? This cannot be undone.")
+            wrapMode: Text.WordWrap
+            width: Math.min(root.width - Kirigami.Units.gridUnit * 3, Kirigami.Units.gridUnit * 18)
+        }
+
+        onAccepted: {
+            if (typeof uriHandler !== "undefined" && uriHandler.deleteCurrentDocument()) {
+                root.returnToLibrary()
             }
         }
     }

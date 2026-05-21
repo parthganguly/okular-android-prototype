@@ -67,6 +67,16 @@ void URIHandler::openLibraryDocument(const QString &uri, const QString &mimeType
     QJniObject::callStaticMethod<void>("org/kde/something/FileClass", "openLibraryDocument", "(Ljava/lang/String;Ljava/lang/String;)V", juri.object<jstring>(), jmimeType.object<jstring>());
 }
 
+void URIHandler::shareCurrentDocument()
+{
+    QJniObject::callStaticMethod<void>("org/kde/something/FileClass", "shareCurrentDocument", "()V");
+}
+
+bool URIHandler::deleteCurrentDocument()
+{
+    return QJniObject::callStaticMethod<jboolean>("org/kde/something/FileClass", "deleteCurrentDocument", "()Z");
+}
+
 void Java_org_kde_something_FileClass_openUri(JNIEnv *env, jobject /*obj*/, jstring uri)
 {
     jboolean isCopy = false;
@@ -85,4 +95,12 @@ void Java_org_kde_something_FileClass_updateLibrary(JNIEnv *env, jobject /*obj*/
         URIHandler::handler.updateLibraryJson(jsonString);
     }, Qt::QueuedConnection);
     env->ReleaseStringUTFChars(json, utf);
+}
+
+void Java_org_kde_something_FileClass_closeDocument(JNIEnv *env, jobject /*obj*/)
+{
+    Q_UNUSED(env);
+    QMetaObject::invokeMethod(&URIHandler::handler, []() {
+        Q_EMIT URIHandler::handler.closeRequested();
+    }, Qt::QueuedConnection);
 }

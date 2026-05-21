@@ -51,6 +51,8 @@ public:
     Q_INVOKABLE void openLibraryFolderUri(const QString &uri);
     Q_INVOKABLE void navigateLibraryUp();
     Q_INVOKABLE void openLibraryDocument(const QString &uri, const QString &mimeType);
+    Q_INVOKABLE void shareCurrentDocument();
+    Q_INVOKABLE bool deleteCurrentDocument();
 
     void updateLibraryJson(const QString &json)
     {
@@ -70,6 +72,7 @@ Q_SIGNALS:
     void lastUrlChanged();
     void libraryJsonChanged();
     void openRequested(const QString &uri);
+    void closeRequested();
 
 private:
     QString m_lastUrl;
@@ -79,6 +82,7 @@ private:
 extern "C" {
 JNIEXPORT void JNICALL Java_org_kde_something_FileClass_openUri(JNIEnv *env, jobject /*obj*/, jstring uri);
 JNIEXPORT void JNICALL Java_org_kde_something_FileClass_updateLibrary(JNIEnv *env, jobject /*obj*/, jstring json);
+JNIEXPORT void JNICALL Java_org_kde_something_FileClass_closeDocument(JNIEnv *env, jobject /*obj*/);
 }
 
 #endif

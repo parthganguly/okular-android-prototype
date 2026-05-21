@@ -141,6 +141,10 @@ Item {
         return entry && entry.category === "pictures"
     }
 
+    function thumbnailUri(entry) {
+        return entry && entry.thumbnailUri ? entry.thumbnailUri : ""
+    }
+
     function openEntry(entry) {
         if (!entry) {
             return
@@ -414,19 +418,30 @@ Item {
                     && !welcomeView.searching
                     && welcomeView.recentEntries.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(154, Kirigami.Units.gridUnit * 7.6)
+            Layout.preferredHeight: Math.max(188, Kirigami.Units.gridUnit * 9.4)
             Layout.maximumHeight: Layout.preferredHeight
             Layout.leftMargin: Kirigami.Units.gridUnit
             Layout.rightMargin: Kirigami.Units.gridUnit
             Layout.bottomMargin: Math.round(Kirigami.Units.smallSpacing * 1.2)
             spacing: Math.round(Kirigami.Units.smallSpacing * 0.6)
 
-            Controls.Label {
-                text: i18nc("document library section", "Recently opened")
-                color: "#24211f"
-                font.pixelSize: Math.round(Kirigami.Units.gridUnit * 0.86)
-                font.weight: Font.DemiBold
+            RowLayout {
                 Layout.fillWidth: true
+
+                Controls.Label {
+                    text: i18nc("document library section", "Local History")
+                    color: "#24211f"
+                    font.pixelSize: Math.round(Kirigami.Units.gridUnit * 1.05)
+                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                }
+
+                Controls.Label {
+                    text: ">"
+                    color: welcomeView.mutedTextColor
+                    font.pixelSize: Math.round(Kirigami.Units.gridUnit * 1.28)
+                    font.weight: Font.DemiBold
+                }
             }
 
             ListView {
@@ -437,83 +452,135 @@ Item {
                 clip: true
                 spacing: Kirigami.Units.smallSpacing
                 model: welcomeView.recentEntries
-                Layout.preferredHeight: Math.max(106, Kirigami.Units.gridUnit * 5.3)
+                Layout.preferredHeight: Math.max(138, Kirigami.Units.gridUnit * 6.9)
                 Layout.fillHeight: false
 
                 delegate: Rectangle {
                     id: recentCard
-                    width: Math.max(122, Kirigami.Units.gridUnit * 6.1)
+                    width: Math.max(188, Kirigami.Units.gridUnit * 9.8)
                     height: recentCards.height
-                    radius: Math.round(Kirigami.Units.gridUnit * 0.9)
-                    color: recentTap.pressed ? welcomeView.pressedSurfaceColor : welcomeView.surfaceColor
-                    border.color: welcomeView.quietBorderColor
+                    radius: Math.round(Kirigami.Units.gridUnit * 0.45)
+                    color: "#111923"
+                    border.color: Qt.rgba(1, 1, 1, 0.08)
                     clip: true
 
-                    ColumnLayout {
-                        anchors {
-                            fill: parent
-                            margins: Math.round(Kirigami.Units.smallSpacing * 0.8)
+                    Image {
+                        anchors.fill: parent
+                        visible: welcomeView.thumbnailUri(modelData).length > 0
+                        source: visible ? welcomeView.thumbnailUri(modelData) : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: welcomeView.thumbnailUri(modelData).length === 0
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: welcomeView.categoryColor(modelData.category, false) }
+                            GradientStop { position: 1.0; color: Qt.darker(welcomeView.categoryColor(modelData.category, false), 1.18) }
                         }
-                        spacing: Math.round(Kirigami.Units.smallSpacing * 0.5)
 
                         Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: Math.round(Kirigami.Units.gridUnit * 0.72)
-                            color: welcomeView.categoryColor(modelData.category, false)
-                            border.color: Qt.rgba(0.12, 0.10, 0.08, 0.06)
-                            clip: true
-
-                            Image {
-                                anchors.fill: parent
-                                visible: welcomeView.isPictureEntry(modelData)
-                                source: visible ? (modelData.thumbnailUri ? modelData.thumbnailUri : modelData.uri) : ""
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
-
-                            Rectangle {
-                                visible: !welcomeView.isPictureEntry(modelData)
-                                anchors.centerIn: parent
-                                width: Math.round(parent.width * 0.40)
-                                height: Math.round(parent.height * 0.56)
-                                radius: 5
-                                color: Qt.rgba(1, 1, 1, 0.74)
-                                border.color: welcomeView.categoryAccent(modelData.category)
-                            }
-
-                            Rectangle {
-                                anchors {
-                                    left: parent.left
-                                    top: parent.top
-                                    margins: 6
-                                }
-                                visible: welcomeView.hasNewLabel(modelData)
-                                width: recentNewLabel.implicitWidth + 12
-                                height: recentNewLabel.implicitHeight + 5
-                                radius: height / 2
-                                color: welcomeView.okularAccentColor
-
-                                Controls.Label {
-                                    id: recentNewLabel
-                                    anchors.centerIn: parent
-                                    text: i18nc("document library new badge", "New")
-                                    color: "#ffffff"
-                                    font.pixelSize: Math.max(9, Math.round(Kirigami.Units.gridUnit * 0.48))
-                                    font.bold: true
-                                }
-                            }
+                            anchors.centerIn: parent
+                            width: Math.round(parent.width * 0.28)
+                            height: Math.round(parent.height * 0.48)
+                            radius: 6
+                            color: Qt.rgba(1, 1, 1, 0.72)
+                            border.color: welcomeView.categoryAccent(modelData.category)
                         }
+                    }
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+                        height: Math.round(parent.height * 0.44)
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.72) }
+                        }
+                    }
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+                        height: Math.max(4, Math.round(Kirigami.Units.smallSpacing * 0.55))
+                        color: Qt.rgba(1, 1, 1, 0.22)
+
+                        Rectangle {
+                            anchors {
+                                left: parent.left
+                                top: parent.top
+                                bottom: parent.bottom
+                            }
+                            width: parent.width * 0.44
+                            color: welcomeView.okularAccentColor
+                        }
+                    }
+
+                    Controls.Label {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                            leftMargin: Math.round(Kirigami.Units.smallSpacing * 0.9)
+                            rightMargin: Math.round(Kirigami.Units.smallSpacing * 0.9)
+                            bottomMargin: Math.max(8, Math.round(Kirigami.Units.smallSpacing * 1.2))
+                        }
+                        text: modelData.name
+                        elide: Text.ElideMiddle
+                        maximumLineCount: 2
+                        wrapMode: Text.Wrap
+                        color: "#ffffff"
+                        font.pixelSize: Math.max(12, Math.round(Kirigami.Units.gridUnit * 0.66))
+                        font.weight: Font.DemiBold
+                    }
+
+                    Rectangle {
+                        anchors {
+                            right: parent.right
+                            top: parent.top
+                            margins: 7
+                        }
+                        width: recentTypeLabel.implicitWidth + 12
+                        height: recentTypeLabel.implicitHeight + 6
+                        radius: height / 2
+                        color: Qt.rgba(0, 0, 0, 0.48)
 
                         Controls.Label {
-                            text: modelData.name
-                            elide: Text.ElideMiddle
-                            maximumLineCount: 2
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                            color: "#24211f"
-                            font.pixelSize: Math.max(11, Math.round(Kirigami.Units.gridUnit * 0.62))
-                            font.weight: Font.Medium
+                            id: recentTypeLabel
+                            anchors.centerIn: parent
+                            text: welcomeView.categoryShortLabel(modelData.category)
+                            color: "#ffffff"
+                            font.pixelSize: Math.max(9, Math.round(Kirigami.Units.gridUnit * 0.48))
+                            font.bold: true
+                        }
+                    }
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            top: parent.top
+                            margins: 7
+                        }
+                        visible: welcomeView.hasNewLabel(modelData)
+                        width: recentNewLabel.implicitWidth + 12
+                        height: recentNewLabel.implicitHeight + 6
+                        radius: height / 2
+                        color: welcomeView.okularAccentColor
+
+                        Controls.Label {
+                            id: recentNewLabel
+                            anchors.centerIn: parent
+                            text: i18nc("document library new badge", "New")
+                            color: "#ffffff"
+                            font.pixelSize: Math.max(9, Math.round(Kirigami.Units.gridUnit * 0.48))
+                            font.bold: true
                         }
                     }
 

@@ -10,6 +10,7 @@
                   android:name="org.kde.something.OpenFileActivity"
                   android:label="Okular"
                   android:hardwareAccelerated="true"
+                  android:enableOnBackInvokedCallback="true"
                   android:screenOrientation="unspecified"
                   android:exported="true">
 

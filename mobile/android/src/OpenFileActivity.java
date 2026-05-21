@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.os.StrictMode;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
@@ -25,6 +26,9 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -54,6 +58,7 @@ class FileClass
 
     public static native void openUri(String uri);
     public static native void updateLibrary(String json);
+    public static native void closeDocument();
 
     public static void setActivity(OpenFileActivity activity)
     {
@@ -150,6 +155,18 @@ class FileClass
         if (currentActivity != null) {
             currentActivity.openLibraryDocument(uri, mimeType);
         }
+    }
+
+    public static void shareCurrentDocument()
+    {
+        if (currentActivity != null) {
+            currentActivity.shareCurrentDocument();
+        }
+    }
+
+    public static boolean deleteCurrentDocument()
+    {
+        return currentActivity != null && currentActivity.deleteCurrentDocument();
     }
 }
 
@@ -248,6 +265,11 @@ public class OpenFileActivity extends QtActivity
     private static final String CATEGORY_PICTURES = "pictures";
     private boolean readerModeEnabled = false;
     private int libraryScanGeneration = 0;
+    private Uri currentDocumentUri;
+    private String currentDocumentMimeType = "";
+    private String currentDocumentName = "";
+    private OnBackInvokedCallback readerBackCallback;
+    private boolean readerBackCallbackRegistered = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -255,7 +277,21 @@ public class OpenFileActivity extends QtActivity
         FileClass.setActivity(this);
         super.onCreate(savedInstanceState);
         FileClass.setActivity(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            readerBackCallback = () -> FileClass.closeDocument();
+        }
         applyReaderMode();
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+        if (readerModeEnabled) {
+            FileClass.closeDocument();
+            return;
+        }
+
+        super.onBackPressed();
     }
 
     private SharedPreferences libraryPrefs()
@@ -351,6 +387,69 @@ public class OpenFileActivity extends QtActivity
         }
 
         displayUri(Uri.parse(uri), mimeType);
+    }
+
+    public void shareCurrentDocument()
+    {
+        if (currentDocumentUri == null) {
+            Toast.makeText(this, "No open document to share", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final Uri shareUri = currentDocumentUri;
+        final String mimeType = currentDocumentMimeType == null || currentDocumentMimeType.isEmpty() ? "*/*" : currentDocumentMimeType;
+        final String title = currentDocumentName == null || currentDocumentName.isEmpty() ? "Okular document" : currentDocumentName;
+        final Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType(mimeType);
+        intent.putExtra(Intent.EXTRA_STREAM, shareUri);
+        intent.putExtra(Intent.EXTRA_TITLE, title);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setClipData(ClipData.newUri(getContentResolver(), title, shareUri));
+
+        try {
+            // FileProvider is a better long-term path; this keeps file:// library entries shareable in the prototype.
+            if ("file".equals(shareUri.getScheme()) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+            }
+            startActivity(Intent.createChooser(intent, "Share document"));
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot share current document", e);
+            Toast.makeText(this, "Could not share this document", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public boolean deleteCurrentDocument()
+    {
+        if (currentDocumentUri == null) {
+            Toast.makeText(this, "No open document to delete", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        final Uri deleteUri = currentDocumentUri;
+        boolean deleted = false;
+        try {
+            if ("file".equals(deleteUri.getScheme())) {
+                final File file = new File(deleteUri.getPath());
+                deleted = file.isFile() && file.delete();
+            } else if (!"fd".equals(deleteUri.getScheme())) {
+                deleted = DocumentsContract.deleteDocument(getContentResolver(), deleteUri);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot delete current document", e);
+        }
+
+        if (!deleted) {
+            Toast.makeText(this, "Could not delete this document", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        removeRecentDocument(deleteUri.toString());
+        currentDocumentUri = null;
+        currentDocumentMimeType = "";
+        currentDocumentName = "";
+        publishLibrary();
+        Toast.makeText(this, "Document deleted", Toast.LENGTH_SHORT).show();
+        return true;
     }
 
     private ArrayList<String> libraryStack()
@@ -504,6 +603,28 @@ public class OpenFileActivity extends QtActivity
             Log.w(TAG, "Cannot parse recent documents", e);
             return new JSONArray();
         }
+    }
+
+    private void removeRecentDocument(String uriString)
+    {
+        if (uriString == null || uriString.isEmpty()) {
+            return;
+        }
+
+        final JSONArray oldRecents = recentDocumentsJson();
+        final JSONArray newRecents = new JSONArray();
+        for (int i = 0; i < oldRecents.length(); ++i) {
+            final JSONObject item = oldRecents.optJSONObject(i);
+            if (item == null || uriString.equals(item.optString("uri"))) {
+                continue;
+            }
+            newRecents.put(item);
+        }
+
+        libraryPrefs().edit()
+                .putString(PREF_RECENT_JSON, newRecents.toString())
+                .remove(PREF_LIBRARY_OVERVIEW_CACHE_JSON)
+                .apply();
     }
 
     private long sizeForUri(Uri uri)
@@ -1185,7 +1306,23 @@ public class OpenFileActivity extends QtActivity
     public void setReaderMode(boolean enabled)
     {
         readerModeEnabled = enabled;
+        updateReaderBackCallback();
         applyReaderMode();
+    }
+
+    private void updateReaderBackCallback()
+    {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || readerBackCallback == null) {
+            return;
+        }
+
+        if (readerModeEnabled && !readerBackCallbackRegistered) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, readerBackCallback);
+            readerBackCallbackRegistered = true;
+        } else if (!readerModeEnabled && readerBackCallbackRegistered) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(readerBackCallback);
+            readerBackCallbackRegistered = false;
+        }
     }
 
     private void applyReaderMode()
@@ -1354,6 +1491,12 @@ public class OpenFileActivity extends QtActivity
         }
 
         Log.v(TAG, "Opening URI with scheme: " + uri.getScheme());
+        currentDocumentUri = originalUri;
+        currentDocumentMimeType = mimeTypeForUri(originalUri, intentType);
+        if (currentDocumentMimeType == null || currentDocumentMimeType.isEmpty()) {
+            currentDocumentMimeType = mimeTypeForLibraryName(displayNameForUri(originalUri));
+        }
+        currentDocumentName = displayNameForUri(originalUri);
         recordRecentDocument(originalUri, intentType);
         FileClass.openUri(uri.toString());
     }

@@ -80,13 +80,6 @@ Kirigami.ApplicationWindow {
     onControlsVisibleChanged: updateReaderMode()
 
     function readerDefaultFitMode(openedUrl) {
-        const lowerUrl = decodeURIComponent(openedUrl.toString()).toLowerCase()
-        const visualExtensions = [".cb7", ".cbr", ".cbt", ".cbz", ".avif", ".bmp", ".gif", ".heif", ".jpeg", ".jpg", ".jp2", ".jxl", ".png", ".tif", ".tiff", ".webp"]
-        for (let i = 0; i < visualExtensions.length; ++i) {
-            if (lowerUrl.indexOf(visualExtensions[i]) !== -1) {
-                return fillScreenMode
-            }
-        }
         return fitWidthMode
     }
 
@@ -124,6 +117,13 @@ Kirigami.ApplicationWindow {
         Kirigami.ColumnView.preventStealing: true
     }
 
+    Shortcut {
+        sequences: [StandardKey.Back]
+        enabled: documentItem.opened
+        context: Qt.ApplicationShortcut
+        onActivated: mainView.returnToLibrary()
+    }
+
     function openInitialUri() {
         const initialUri = typeof uriHandler !== "undefined" ? uriHandler.lastUrl : uri
         if (initialUri) {
@@ -138,6 +138,11 @@ Kirigami.ApplicationWindow {
         function onOpenRequested(openedUri) {
             if (openedUri) {
                 documentItem.url = openedUri
+            }
+        }
+        function onCloseRequested() {
+            if (documentItem.opened) {
+                mainView.returnToLibrary()
             }
         }
     }

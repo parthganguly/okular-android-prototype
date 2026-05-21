@@ -19,7 +19,7 @@ Item {
     id: root
     property DocumentItem document
     property PageItem page: root.continuousMode && continuousList.currentItem ? continuousList.currentItem.pageItem : mouseArea.currPageDelegate.pageItem
-    property bool trimMargins: true
+    property bool trimMargins: false
     property int fitMode: 0
     property bool continuousMode: false
     property real continuousZoom: 1
