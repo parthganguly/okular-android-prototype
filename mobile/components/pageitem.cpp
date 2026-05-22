@@ -24,6 +24,20 @@
 
 #define REDRAW_TIMEOUT 250
 
+namespace
+{
+constexpr qreal edgePreserveScale = 1.04;
+
+QSize edgePreservedSize(const QSize &size, bool preserveEdges)
+{
+    if (!preserveEdges) {
+        return size;
+    }
+
+    return QSize(qMax(1, qCeil(size.width() * edgePreserveScale)), qMax(1, qCeil(size.height() * edgePreserveScale)));
+}
+}
+
 PageItem::PageItem(QQuickItem *parent)
     : QQuickItem(parent)
     , Okular::View(QStringLiteral("PageView"))
@@ -342,14 +356,7 @@ void PageItem::requestPixmap()
     const qreal dpr = window()->devicePixelRatio();
     const Okular::NormalizedRect crop = effectiveCrop();
     const QSize uncroppedSize = scaledUncroppedSize(crop);
-    QSize requestSize = uncroppedSize;
-    if (!m_isThumbnail) {
-        // Render a tiny bit above display size, then let PagePainter scale down.
-        // This keeps edge pixels from PDFs/comics from disappearing during the
-        // generator and texture scaling pipeline, without adding visible gutters.
-        static const qreal edgePreserveScale = 1.03;
-        requestSize = QSize(qMax(1, qCeil(uncroppedSize.width() * edgePreserveScale)), qMax(1, qCeil(uncroppedSize.height() * edgePreserveScale)));
-    }
+    const QSize requestSize = edgePreservedSize(uncroppedSize, !m_isThumbnail);
 
     // The shared painter draws a large fallback X when no suitable pixmap is ready.
     // On mobile that looks like an error during page turns, so only paint cached
@@ -376,15 +383,17 @@ void PageItem::paint()
     const int flags = PagePainter::Accessibility | PagePainter::Highlights | PagePainter::Annotations;
 
     const qreal dpr = window()->devicePixelRatio();
-    const QSize renderSize(qMax(1, qCeil(width() * dpr)), qMax(1, qCeil(height() * dpr)));
-    const QRect limits(QPoint(0, 0), renderSize);
     const Okular::NormalizedRect crop = effectiveCrop();
     const QSize uncroppedSize = scaledUncroppedSize(crop);
-    QPixmap pix(limits.size());
+    const QSize renderUncroppedSize = edgePreservedSize(uncroppedSize, !m_isThumbnail);
+    const QSize renderLogicalSize = edgePreservedSize(QSize(qMax(1, qCeil(width())), qMax(1, qCeil(height()))), !m_isThumbnail);
+    const QSize renderTextureSize(qMax(1, qCeil(renderLogicalSize.width() * dpr)), qMax(1, qCeil(renderLogicalSize.height() * dpr)));
+    const QRect limits(QPoint(0, 0), renderLogicalSize);
+    QPixmap pix(renderTextureSize);
     pix.setDevicePixelRatio(dpr);
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing, false);
-    PagePainter::paintCroppedPageOnPainter(&p, m_page, observer, flags, uncroppedSize.width(), uncroppedSize.height(), limits, crop, nullptr);
+    PagePainter::paintCroppedPageOnPainter(&p, m_page, observer, flags, renderUncroppedSize.width(), renderUncroppedSize.height(), limits, crop, nullptr);
     p.end();
 
     m_buffer = pix.toImage();

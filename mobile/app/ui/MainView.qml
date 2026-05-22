@@ -586,15 +586,14 @@ Kirigami.Page {
     Rectangle {
         id: progressTrack
         z: 99
-        visible: document.opened
-        opacity: root.chromeVisible ? 1 : 0.38
-        height: root.chromeVisible ? Math.max(3, Math.round(Kirigami.Units.smallSpacing / 2)) : 2
-        color: Qt.rgba(0.14, 0.15, 0.16, root.chromeVisible ? 0.32 : 0.12)
+        visible: root.chromeVisible
+        height: Math.max(3, Math.round(Kirigami.Units.smallSpacing / 2))
+        color: Qt.rgba(0.14, 0.15, 0.16, 0.32)
         anchors {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
-            bottomMargin: root.chromeVisible ? fileBrowserRoot.bottomSystemInset : 0
+            bottomMargin: fileBrowserRoot.bottomSystemInset
         }
 
         Rectangle {

@@ -84,6 +84,12 @@ Kirigami.ApplicationWindow {
     title: documentItem.windowTitleForDocument ? documentItem.windowTitleForDocument : i18n("Okular")
 
     onControlsVisibleChanged: updateReaderMode()
+    onClosing: (close) => {
+        if (documentItem.opened) {
+            close.accepted = false
+            mainView.returnToLibrary()
+        }
+    }
 
     function readerDefaultFitMode(openedUrl) {
         return fitWidthMode
