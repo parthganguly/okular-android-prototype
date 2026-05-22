@@ -28,8 +28,9 @@ Item {
     readonly property int fillScreenMode: 2
     readonly property real continuousMinZoom: 1
     readonly property real continuousMaxZoom: 4
-    // Keep artwork that touches the PDF edge, like comic/page frames, inside the viewport.
-    readonly property real pageBorderInset: Math.max(10, Math.min(16, Math.round(width * 0.012)))
+    // A tiny edge guard keeps hairline page borders visible without wasting the
+    // screen space that makes the mobile reader feel good.
+    readonly property real pageBorderInset: 2
     readonly property real pageHorizontalGutter: pageBorderInset
     readonly property real pageVerticalGutter: pageBorderInset
     signal clicked

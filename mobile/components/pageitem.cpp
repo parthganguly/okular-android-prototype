@@ -368,7 +368,11 @@ void PageItem::paint()
     const int flags = PagePainter::Accessibility | PagePainter::Highlights | PagePainter::Annotations;
 
     const qreal dpr = window()->devicePixelRatio();
-    const QRect limits(QPoint(0, 0), QSize(width() * dpr, height() * dpr));
+    // Round the render target outward. Fractional item sizes are common on
+    // high-DPI Android screens, and truncating here can drop the final page
+    // pixels: exactly where edge artwork and comic/PDF borders often live.
+    const QSize renderSize(qMax(1, qCeil(width() * dpr)), qMax(1, qCeil(height() * dpr)));
+    const QRect limits(QPoint(0, 0), renderSize);
     const Okular::NormalizedRect crop = effectiveCrop();
     const QSize uncroppedSize = scaledUncroppedSize(crop);
     QPixmap pix(limits.size());
@@ -441,7 +445,7 @@ QSize PageItem::scaledUncroppedSize(const Okular::NormalizedRect &crop) const
 {
     const qreal safeCropWidth = qMax<qreal>(crop.width(), 0.01);
     const qreal safeCropHeight = qMax<qreal>(crop.height(), 0.01);
-    return QSize(qMax(1, qRound(width() / safeCropWidth)), qMax(1, qRound(height() / safeCropHeight)));
+    return QSize(qMax(1, qCeil(width() / safeCropWidth)), qMax(1, qCeil(height() / safeCropHeight)));
 }
 
 // Protected slots
