@@ -342,6 +342,14 @@ void PageItem::requestPixmap()
     const qreal dpr = window()->devicePixelRatio();
     const Okular::NormalizedRect crop = effectiveCrop();
     const QSize uncroppedSize = scaledUncroppedSize(crop);
+    QSize requestSize = uncroppedSize;
+    if (!m_isThumbnail) {
+        // Render a tiny bit above display size, then let PagePainter scale down.
+        // This keeps edge pixels from PDFs/comics from disappearing during the
+        // generator and texture scaling pipeline, without adding visible gutters.
+        static const qreal edgePreserveScale = 1.03;
+        requestSize = QSize(qMax(1, qCeil(uncroppedSize.width() * edgePreserveScale)), qMax(1, qCeil(uncroppedSize.height() * edgePreserveScale)));
+    }
 
     // The shared painter draws a large fallback X when no suitable pixmap is ready.
     // On mobile that looks like an error during page turns, so only paint cached
@@ -350,7 +358,7 @@ void PageItem::requestPixmap()
         paint();
     }
     {
-        auto request = new Okular::PixmapRequest(observer, m_viewPort.pageNumber, uncroppedSize.width(), uncroppedSize.height(), dpr, priority, Okular::PixmapRequest::Asynchronous);
+        auto request = new Okular::PixmapRequest(observer, m_viewPort.pageNumber, requestSize.width(), requestSize.height(), dpr, priority, Okular::PixmapRequest::Asynchronous);
         request->setNormalizedRect(crop);
         const Okular::Document::PixmapRequestFlag prf = Okular::Document::NoOption;
         m_documentItem.data()->document()->requestPixmaps({request}, prf);
@@ -368,9 +376,6 @@ void PageItem::paint()
     const int flags = PagePainter::Accessibility | PagePainter::Highlights | PagePainter::Annotations;
 
     const qreal dpr = window()->devicePixelRatio();
-    // Round the render target outward. Fractional item sizes are common on
-    // high-DPI Android screens, and truncating here can drop the final page
-    // pixels: exactly where edge artwork and comic/PDF borders often live.
     const QSize renderSize(qMax(1, qCeil(width() * dpr)), qMax(1, qCeil(height() * dpr)));
     const QRect limits(QPoint(0, 0), renderSize);
     const Okular::NormalizedRect crop = effectiveCrop();
