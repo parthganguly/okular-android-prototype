@@ -28,9 +28,10 @@ Item {
     readonly property int fillScreenMode: 2
     readonly property real continuousMinZoom: 1
     readonly property real continuousMaxZoom: 4
-    // A tiny guard keeps one-pixel document borders visible without wasting reader space.
-    readonly property real pageHorizontalGutter: Math.max(4, Math.min(8, Math.round(width * 0.008)))
-    readonly property real pageVerticalGutter: Math.max(0, Math.min(2, Math.round(width * 0.003)))
+    // Keep artwork that touches the PDF edge, like comic/page frames, inside the viewport.
+    readonly property real pageBorderInset: Math.max(10, Math.min(16, Math.round(width * 0.012)))
+    readonly property real pageHorizontalGutter: pageBorderInset
+    readonly property real pageVerticalGutter: pageBorderInset
     signal clicked
 
     signal urlOpened
