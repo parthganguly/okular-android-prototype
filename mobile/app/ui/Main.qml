@@ -27,7 +27,7 @@ Kirigami.ApplicationWindow {
 
     wideScreen: width > columnWidth * 5
     visible: true
-    // Qt 6.9 auto-pads safe areas; Okular handles them per screen instead.
+    // Qt 6.9 auto-pads safe areas; the reader handles them per screen instead.
     topPadding: 0
     leftPadding: 0
     rightPadding: 0
@@ -39,8 +39,8 @@ Kirigami.ApplicationWindow {
     pageStack.separatorVisible: false
 
     globalDrawer: Kirigami.GlobalDrawer {
-        title: i18n("Okular")
-        titleIcon: "okular"
+        title: i18n("Parthicle Reader")
+        titleIcon: "application-pdf"
         drawerOpen: false
         isMenu: true
 
@@ -81,7 +81,7 @@ Kirigami.ApplicationWindow {
         handleVisible: enabled && pageStack.layers.depth < 2
     }
 
-    title: documentItem.windowTitleForDocument ? documentItem.windowTitleForDocument : i18n("Okular")
+    title: documentItem.windowTitleForDocument ? documentItem.windowTitleForDocument : i18n("Parthicle Reader")
 
     onControlsVisibleChanged: updateReaderMode()
     onClosing: (close) => {

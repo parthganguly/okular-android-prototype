@@ -7,6 +7,7 @@
 #include <QApplication>
 
 #include <KLocalizedContext>
+#include <KLocalizedString>
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QDir>
@@ -33,12 +34,15 @@ int main(int argc, char *argv[])
     KLocalizedString::setApplicationDomain("org.kde.active.documentviewer");
 
     KAboutData aboutData = okularAboutData();
+    aboutData.setDisplayName(i18n("Parthicle Reader"));
+    aboutData.setShortDescription(i18n("The MX Player for reading files. Based on Okular/KDE."));
+    aboutData.setOtherText(i18n("Parthicle Reader is an independent fork/prototype based on Okular, the open-source document viewer developed by the KDE community. It is not affiliated with, sponsored by, or endorsed by KDE e.V."));
     KAboutData::setApplicationData(aboutData);
 
-    QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("okular")));
+    QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("application-pdf")));
 
     QCommandLineParser parser;
-    // parser.setApplicationDescription(i18n("Okular mobile"));
+    // parser.setApplicationDescription(i18n("Parthicle Reader"));
     aboutData.setupCommandLine(&parser);
     parser.process(app);
     aboutData.processCommandLine(&parser);

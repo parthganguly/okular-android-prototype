@@ -23,17 +23,20 @@ Item {
     readonly property bool androidLibraryAvailable: typeof uriHandler !== "undefined" && uriHandler.libraryJson !== undefined
     readonly property real topInset: androidLibraryAvailable && typeof fileBrowserRoot !== "undefined" ? fileBrowserRoot.topSystemInset : 0
     readonly property real bottomInset: androidLibraryAvailable && typeof fileBrowserRoot !== "undefined" ? fileBrowserRoot.bottomSystemInset : 0
-    readonly property color libraryBackgroundColor: "#fbfaf7"
-    readonly property color surfaceColor: "#ffffff"
-    readonly property color softSurfaceColor: "#f0eeea"
-    readonly property color pressedSurfaceColor: "#ece8e1"
+    readonly property color libraryBackgroundColor: "#FBFAF7"
+    readonly property color surfaceColor: "#FFFFFF"
+    readonly property color softSurfaceColor: "#F0EEEA"
+    readonly property color pressedSurfaceColor: "#ECE8E1"
     readonly property color quietBorderColor: Qt.rgba(0.12, 0.10, 0.08, 0.11)
+    readonly property color primaryTextColor: "#24211F"
     readonly property color mutedTextColor: Qt.rgba(0.10, 0.09, 0.08, 0.62)
-    readonly property color okularAccentColor: "#e91e63"
+    readonly property color primaryAccentColor: "#D81B60"
+    readonly property color softAccentColor: "#F8D7E5"
+    readonly property color deepAccentColor: "#8A1744"
     property var libraryState: ({
         "hasFolder": false,
         "title": i18nc("document library", "Local"),
-        "message": i18nc("document library", "Allow all files access to scan your Okular documents like MX Player, or choose one folder manually."),
+        "message": i18nc("document library", "Allow all files access to scan your reading files like MX Player scans videos, or choose one folder manually."),
         "canGoUp": false,
         "needsAllFilesAccess": true,
         "entries": [],
@@ -225,7 +228,7 @@ Item {
         try {
             libraryState = JSON.parse(uriHandler.libraryJson);
         } catch (error) {
-            console.warn("Cannot parse Okular library JSON", error);
+            console.warn("Cannot parse Parthicle library JSON", error);
         }
     }
 
@@ -520,7 +523,7 @@ Item {
                                 bottom: parent.bottom
                             }
                             width: parent.width * 0.44
-                            color: welcomeView.okularAccentColor
+                            color: welcomeView.primaryAccentColor
                         }
                     }
 
@@ -573,7 +576,7 @@ Item {
                         width: recentNewLabel.implicitWidth + 12
                         height: recentNewLabel.implicitHeight + 6
                         radius: height / 2
-                        color: welcomeView.okularAccentColor
+                        color: welcomeView.primaryAccentColor
 
                         Controls.Label {
                             id: recentNewLabel
@@ -609,7 +612,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Math.max(40, Kirigami.Units.gridUnit * 2.05)
                     radius: height / 2
-                    color: welcomeView.activeCategory === modelData.id ? welcomeView.okularAccentColor : welcomeView.softSurfaceColor
+                    color: welcomeView.activeCategory === modelData.id ? welcomeView.primaryAccentColor : welcomeView.softSurfaceColor
                     border.width: 1
                     border.color: welcomeView.activeCategory === modelData.id ? Qt.rgba(0, 0, 0, 0) : welcomeView.quietBorderColor
 
@@ -774,7 +777,7 @@ Item {
                                 Layout.preferredWidth: Math.max(46, newListLabel.implicitWidth + 14)
                                 Layout.preferredHeight: Math.max(24, Kirigami.Units.gridUnit * 1.15)
                                 radius: height / 2
-                                color: welcomeView.okularAccentColor
+                            color: welcomeView.primaryAccentColor
 
                                 Controls.Label {
                                     id: newListLabel

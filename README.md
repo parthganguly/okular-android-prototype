@@ -1,4 +1,22 @@
-# Okular – Universal Document Viewer
+# Parthicle Reader
+
+A local-first Android document reader based on Okular/KDE - built to be the MX Player for reading files.
+
+Parthicle Reader opens PDFs, EPUBs, comics, images, Markdown, TXT, DjVu, XPS, TIFF, and other supported document formats.
+
+This is an independent prototype/fork and is not affiliated with or endorsed by KDE.
+
+## Attribution
+
+Parthicle Reader is based on Okular/KDE and remains open-source under the applicable licenses. See [ATTRIBUTION.md](ATTRIBUTION.md) and the existing license files for details.
+
+## Android Package Name Note
+
+The Android package currently remains `org.kde.okular.kirigami` to avoid breaking the working prototype. Moving to `com.greatparthicle.reader` should be a separate tested change covering `AndroidManifest.xml`, Java activity/package wiring, androiddeployqt/CMake metadata, intent filters, stored preferences, and upgrade/install testing.
+
+## Upstream Okular README
+
+# Okular - Universal Document Viewer
 
 Okular can view and annotate documents of various formats, including PDF, Postscript, Comic Book, and various image formats.
 It supports native PDF annotations.
@@ -26,7 +44,7 @@ https://mail.kde.org/mailman/listinfo/okular-devel
 https://invent.kde.org/graphics/okular.git
 
 The Okular repository contains the source code for:
- * the `okular` desktop application (the “shell”),
+ * the `okular` desktop application (the shell),
  * the `okularpart` KParts plugin,
  * the `okularkirigami` mobile application,
  * several `okularGenerator_xyz` plugins, which provide backends for different document types.
@@ -38,7 +56,7 @@ https://api.kde.org/okular/html/index.html
 ## Contributing
 
 Okular uses the merge request workflow.
-Merge requests are required to run pre-commit CI jobs; please don’t push to the master branch directly.
+Merge requests are required to run pre-commit CI jobs; please don't push to the master branch directly.
 See https://community.kde.org/Infrastructure/GitLab for an introduction.
 
 ### Build instructions
@@ -77,6 +95,7 @@ You can choose which executable to build by passing a flag to CMake:
 ```bash
 cmake -DCMAKE_INSTALL_PREFIX=/path/to/your/install/dir -DOKULAR_UI=desktop ..
 ```
+
 Available options are `desktop`, `mobile`, and `both`.
 
 ### clang-format

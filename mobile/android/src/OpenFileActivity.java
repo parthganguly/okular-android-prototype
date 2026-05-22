@@ -253,7 +253,7 @@ public class OpenFileActivity extends QtActivity
         }
     }
 
-    static final String TAG = "Okular";
+    static final String TAG = "ParthicleReader";
     private static final String OKULAR_MIME_TYPE_QUERY_ITEM = "okularMimeType";
     private static final String OKULAR_FILE_NAME_QUERY_ITEM = "okularFileName";
     private static final int REQUEST_LIBRARY_FOLDER = 3401;
@@ -473,7 +473,7 @@ public class OpenFileActivity extends QtActivity
 
         final Uri shareUri = currentDocumentUri;
         final String mimeType = currentDocumentMimeType == null || currentDocumentMimeType.isEmpty() ? "*/*" : currentDocumentMimeType;
-        final String title = currentDocumentName == null || currentDocumentName.isEmpty() ? "Okular document" : currentDocumentName;
+        final String title = currentDocumentName == null || currentDocumentName.isEmpty() ? "Parthicle document" : currentDocumentName;
         final Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType(mimeType);
         intent.putExtra(Intent.EXTRA_STREAM, shareUri);
@@ -1168,7 +1168,7 @@ public class OpenFileActivity extends QtActivity
         try {
             state.put("hasFolder", false);
             state.put("title", "Local");
-            state.put("message", "Scanning local storage for Okular documents...");
+            state.put("message", "Scanning local storage for readable files...");
             state.put("canGoUp", false);
             state.put("needsAllFilesAccess", false);
             state.put("entries", new JSONArray());
@@ -1205,7 +1205,7 @@ public class OpenFileActivity extends QtActivity
 
                 state.put("hasFolder", true);
                 state.put("title", selectedFolder.getName().isEmpty() ? selectedFolder.getAbsolutePath() : selectedFolder.getName());
-                state.put("message", entries.length() == 0 ? "No supported Okular documents in this folder." : "");
+                state.put("message", entries.length() == 0 ? "No supported reading files in this folder." : "");
                 state.put("canGoUp", true);
                 state.put("needsAllFilesAccess", false);
                 state.put("entries", entries);
@@ -1230,7 +1230,7 @@ public class OpenFileActivity extends QtActivity
 
             state.put("hasFolder", true);
             state.put("title", "Local");
-            state.put("message", entries.length() == 0 ? "No supported Okular documents found in shared storage." : "");
+            state.put("message", entries.length() == 0 ? "No supported reading files found in shared storage." : "");
             state.put("canGoUp", false);
             state.put("needsAllFilesAccess", false);
             state.put("entries", entries);
@@ -1241,7 +1241,7 @@ public class OpenFileActivity extends QtActivity
             try {
                 state.put("hasFolder", false);
                 state.put("title", "Local");
-                state.put("message", "Okular could not scan storage. Try the folder picker instead.");
+                state.put("message", "Parthicle Reader could not scan storage. Try the folder picker instead.");
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", false);
                 state.put("entries", entries);
@@ -1262,7 +1262,7 @@ public class OpenFileActivity extends QtActivity
             if (treeUriString == null || treeUriString.isEmpty()) {
                 state.put("hasFolder", false);
                 state.put("title", "Local");
-                state.put("message", "Allow all files access to scan your Okular documents like MX Player, or choose one folder manually.");
+                state.put("message", "Allow all files access to scan your reading files like MX Player scans videos, or choose one folder manually.");
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", true);
                 state.put("entries", entries);
@@ -1321,7 +1321,7 @@ public class OpenFileActivity extends QtActivity
 
             state.put("hasFolder", true);
             state.put("title", displayNameForDocumentUri(folderUri));
-            state.put("message", entries.length() == 0 ? "No supported Okular documents in this folder." : "");
+            state.put("message", entries.length() == 0 ? "No supported reading files in this folder." : "");
             state.put("canGoUp", libraryStack().size() > 1);
             state.put("needsAllFilesAccess", true);
             state.put("entries", entries);
@@ -1332,7 +1332,7 @@ public class OpenFileActivity extends QtActivity
             try {
                 state.put("hasFolder", false);
                 state.put("title", "Folders");
-                state.put("message", "Okular could not read that folder. Choose it again or pick another folder.");
+                state.put("message", "Parthicle Reader could not read that folder. Choose it again or pick another folder.");
                 state.put("canGoUp", false);
                 state.put("needsAllFilesAccess", true);
                 state.put("entries", entries);
@@ -1375,7 +1375,7 @@ public class OpenFileActivity extends QtActivity
                     publishLibraryJson(json);
                 }
             });
-        }, "OkularLibraryScanner").start();
+        }, "ParthicleLibraryScanner").start();
     }
 
     private void publishLibraryJson(String json)

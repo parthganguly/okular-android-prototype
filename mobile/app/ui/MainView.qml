@@ -23,9 +23,9 @@ Kirigami.Page {
     readonly property real thumbnailStripHeight: Math.max(72, Kirigami.Units.gridUnit * 3.9)
     readonly property color readerToolbarSurface: Qt.rgba(0.98, 0.97, 0.94, 0.95)
     readonly property color readerToolbarBorder: Qt.rgba(0.12, 0.10, 0.08, 0.16)
-    readonly property color readerToolbarTextColor: "#24211f"
+    readonly property color readerToolbarTextColor: "#24211F"
     readonly property color readerToolbarMutedColor: Qt.rgba(0.10, 0.09, 0.08, 0.62)
-    readonly property color readerToolbarAccentColor: "#e91e63"
+    readonly property color primaryAccentColor: "#D81B60"
     property bool moreActionsVisible: false
 
     function revealControls() {
@@ -200,7 +200,7 @@ Kirigami.Page {
         Kirigami.Theme.inherit: false
         Kirigami.Theme.colorSet: Kirigami.Theme.View
         Kirigami.Theme.textColor: root.readerToolbarTextColor
-        Kirigami.Theme.highlightColor: root.readerToolbarAccentColor
+        Kirigami.Theme.highlightColor: root.primaryAccentColor
 
         RowLayout {
             anchors {
@@ -253,7 +253,7 @@ Kirigami.Page {
 
             QQC2.Label {
                 visible: !root.compactControls
-                text: document.windowTitleForDocument ? document.windowTitleForDocument : i18n("Okular")
+                text: document.windowTitleForDocument ? document.windowTitleForDocument : i18n("Parthicle Reader")
                 color: Kirigami.Theme.textColor
                 elide: Text.ElideMiddle
                 Layout.fillWidth: visible
@@ -497,9 +497,9 @@ Kirigami.Page {
                 width: Math.round(topThumbnailStrip.height * 0.62)
                 height: pageThumbnailList.height
                 radius: Math.round(Kirigami.Units.smallSpacing * 0.8)
-                color: index === document.currentPage ? Qt.rgba(0.91, 0.12, 0.39, 0.12) : "#ffffff"
+                color: index === document.currentPage ? Qt.rgba(0.85, 0.11, 0.38, 0.12) : "#ffffff"
                 border.width: index === document.currentPage ? 2 : 1
-                border.color: index === document.currentPage ? root.readerToolbarAccentColor : root.readerToolbarBorder
+                border.color: index === document.currentPage ? root.primaryAccentColor : root.readerToolbarBorder
                 clip: true
 
                 Okular.ThumbnailItem {
@@ -520,7 +520,7 @@ Kirigami.Page {
                     width: Math.max(18, pageNumberLabel.implicitWidth + 8)
                     height: Math.max(16, pageNumberLabel.implicitHeight + 3)
                     radius: height / 2
-                    color: index === document.currentPage ? root.readerToolbarAccentColor : Qt.rgba(0.98, 0.97, 0.94, 0.88)
+                    color: index === document.currentPage ? root.primaryAccentColor : Qt.rgba(0.98, 0.97, 0.94, 0.88)
 
                     QQC2.Label {
                         id: pageNumberLabel
@@ -603,7 +603,7 @@ Kirigami.Page {
                 left: parent.left
             }
             width: parent.width * (document.pageCount > 0 ? ((document.currentPage + 1) / document.pageCount) : 0)
-            color: root.readerToolbarAccentColor
+            color: root.primaryAccentColor
         }
     }
 }

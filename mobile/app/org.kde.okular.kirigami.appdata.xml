@@ -3,56 +3,56 @@
   <id>org.kde.okular.kirigami</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-2.0+ and GFDL-1.3</project_license>
-  <name>Okular Mobile</name>
-  <name xml:lang="ar">اوكلار محمول</name>
-  <name xml:lang="az">Okular Mobil</name>
-  <name xml:lang="be">Okular Mobile</name>
-  <name xml:lang="bg">Okular за мобилни устройства</name>
-  <name xml:lang="ca">Okular Mobile</name>
-  <name xml:lang="ca-valencia">Okular Mobile</name>
-  <name xml:lang="cs">Okular Mobile</name>
-  <name xml:lang="da">Okular Mobile</name>
-  <name xml:lang="de">Okular Mobile</name>
-  <name xml:lang="el">Okular για κινητά</name>
-  <name xml:lang="en-GB">Okular Mobile</name>
-  <name xml:lang="eo">Okulara Poŝtelefono</name>
-  <name xml:lang="es">Okular Mobile</name>
-  <name xml:lang="et">Okular Mobile</name>
-  <name xml:lang="eu">Okular Mugikorra</name>
-  <name xml:lang="fi">Okular Mobile</name>
-  <name xml:lang="fr">Okular Mobile</name>
-  <name xml:lang="ga">Soghluaiste Okular</name>
-  <name xml:lang="gl">Okular Mobile</name>
-  <name xml:lang="he">Okular לניידים</name>
-  <name xml:lang="hi">ऑकुलर मोबाइल</name>
-  <name xml:lang="hu">Okular Mobile</name>
-  <name xml:lang="ia">Okular Mobile</name>
-  <name xml:lang="id">Okular Mobile</name>
-  <name xml:lang="is">Okular fyrir farsíma</name>
-  <name xml:lang="it">Okular Mobile</name>
-  <name xml:lang="ka">Okular მობილურზე</name>
-  <name xml:lang="ko">Okular 모바일</name>
-  <name xml:lang="lt">Okular mobilioji</name>
-  <name xml:lang="lv">Okular Mobile</name>
-  <name xml:lang="nl">Okular mobiel</name>
-  <name xml:lang="nn">Okular mobil</name>
-  <name xml:lang="pa">ਓਕਲਾਰ ਮੋਬਾਈਲ</name>
-  <name xml:lang="pl">Okular Mobile</name>
-  <name xml:lang="pt">Okular Móvel</name>
-  <name xml:lang="pt-BR">Okular móvel</name>
-  <name xml:lang="ro">Okular Mobil</name>
-  <name xml:lang="ru">Okular Mobile</name>
-  <name xml:lang="sa">ओकुलर मोबाईल</name>
-  <name xml:lang="sk">Okular Mobile</name>
-  <name xml:lang="sl">Okular Mobile</name>
-  <name xml:lang="sv">Okular Mobil</name>
-  <name xml:lang="ta">கைபேசிக்கான ஆக்குலர்</name>
-  <name xml:lang="tr">Okular Mobile</name>
-  <name xml:lang="uk">Мобільний Okular</name>
-  <name xml:lang="vi">Okular Di động</name>
-  <name xml:lang="zh-CN">Okular 文档查看器手机版</name>
-  <name xml:lang="zh-TW">Okular 行動版</name>
-  <summary>Document Viewer</summary>
+  <name>Parthicle Reader</name>
+  <name xml:lang="ar">Parthicle Reader</name>
+  <name xml:lang="az">Parthicle Reader</name>
+  <name xml:lang="be">Parthicle Reader</name>
+  <name xml:lang="bg">Parthicle Reader</name>
+  <name xml:lang="ca">Parthicle Reader</name>
+  <name xml:lang="ca-valencia">Parthicle Reader</name>
+  <name xml:lang="cs">Parthicle Reader</name>
+  <name xml:lang="da">Parthicle Reader</name>
+  <name xml:lang="de">Parthicle Reader</name>
+  <name xml:lang="el">Parthicle Reader</name>
+  <name xml:lang="en-GB">Parthicle Reader</name>
+  <name xml:lang="eo">Parthicle Reader</name>
+  <name xml:lang="es">Parthicle Reader</name>
+  <name xml:lang="et">Parthicle Reader</name>
+  <name xml:lang="eu">Parthicle Reader</name>
+  <name xml:lang="fi">Parthicle Reader</name>
+  <name xml:lang="fr">Parthicle Reader</name>
+  <name xml:lang="ga">Parthicle Reader</name>
+  <name xml:lang="gl">Parthicle Reader</name>
+  <name xml:lang="he">Parthicle Reader</name>
+  <name xml:lang="hi">Parthicle Reader</name>
+  <name xml:lang="hu">Parthicle Reader</name>
+  <name xml:lang="ia">Parthicle Reader</name>
+  <name xml:lang="id">Parthicle Reader</name>
+  <name xml:lang="is">Parthicle Reader</name>
+  <name xml:lang="it">Parthicle Reader</name>
+  <name xml:lang="ka">Parthicle Reader</name>
+  <name xml:lang="ko">Parthicle Reader</name>
+  <name xml:lang="lt">Parthicle Reader</name>
+  <name xml:lang="lv">Parthicle Reader</name>
+  <name xml:lang="nl">Parthicle Reader</name>
+  <name xml:lang="nn">Parthicle Reader</name>
+  <name xml:lang="pa">Parthicle Reader</name>
+  <name xml:lang="pl">Parthicle Reader</name>
+  <name xml:lang="pt">Parthicle Reader</name>
+  <name xml:lang="pt-BR">Parthicle Reader</name>
+  <name xml:lang="ro">Parthicle Reader</name>
+  <name xml:lang="ru">Parthicle Reader</name>
+  <name xml:lang="sa">Parthicle Reader</name>
+  <name xml:lang="sk">Parthicle Reader</name>
+  <name xml:lang="sl">Parthicle Reader</name>
+  <name xml:lang="sv">Parthicle Reader</name>
+  <name xml:lang="ta">Parthicle Reader</name>
+  <name xml:lang="tr">Parthicle Reader</name>
+  <name xml:lang="uk">Parthicle Reader</name>
+  <name xml:lang="vi">Parthicle Reader</name>
+  <name xml:lang="zh-CN">Parthicle Reader</name>
+  <name xml:lang="zh-TW">Parthicle Reader</name>
+  <summary>The MX Player for reading files</summary>
   <summary xml:lang="ar">عارض المستندات</summary>
   <summary xml:lang="az">Sənədə baxış vasitısi</summary>
   <summary xml:lang="be">Сродак для прагляду дакументаў</summary>
@@ -63,7 +63,7 @@
   <summary xml:lang="da">Dokumentfremviser</summary>
   <summary xml:lang="de">Dokumentenbetrachter</summary>
   <summary xml:lang="el">Πρόγραμμα προβολής εγγράφων</summary>
-  <summary xml:lang="en-GB">Document Viewer</summary>
+  <summary xml:lang="en-GB">The MX Player for reading files</summary>
   <summary xml:lang="eo">Dokumentrigardilo</summary>
   <summary xml:lang="es">Visor de documentos</summary>
   <summary xml:lang="et">Dokumendinäitaja</summary>
@@ -101,13 +101,16 @@
   <summary xml:lang="vi">Trình xem tài liệu</summary>
   <summary xml:lang="zh-CN">文档查看器</summary>
   <summary xml:lang="zh-TW">文件檢視器</summary>
-  <developer id="org.kde">
-    <name>KDE</name>
-    <url>https://kde.org</url>
+  <developer id="com.greatparthicle">
+    <name>Parthicle Reader contributors</name>
+    <url>https://github.com/parthganguly/okular-android-prototype</url>
   </developer>
   <description>
     <p>
-   Okular is a universal document viewer developed by KDE. Okular works on multiple platforms, including but not limited to Linux, Windows, Mac OS X, *BSD, etc.
+   Parthicle Reader is a local-first Android document reader based on Okular, the open-source document viewer developed by the KDE community. This independent prototype is not affiliated with, sponsored by, or endorsed by KDE e.V.
+  </p>
+    <p>
+   It is positioned as the MX Player for reading files, with support for PDFs, EPUBs, comics, images, Markdown, TXT, DjVu, XPS, TIFF, and other supported formats.
   </p>
     <p xml:lang="ar">اوكلار هو عارض مستندات عالمي مطور بواسطة كِيدِي. يعمل اوكلار على أنظمة أساسية متعددة، بما في ذلك على سبيل المثال لا الحصر لينكس و ويندوز و Mac OS X و * BSD وما إلى ذلك.</p>
     <p xml:lang="az">Okular KDE tərəfindən yaradılan sənədlərə universal baxış vasitəsidir. Okular Linux, Windows, Mac OS X, * BSD və s. digər bir çox platformada işləyir.</p>
@@ -118,7 +121,7 @@
     <p xml:lang="cs">Okular je univerzální prohlížeč dokumentů vyvinutý KDE. Okular funguje na různých platformách, včetně, ale nikoli výhradně, Linuxu, Windows, Mac OS X, *BSD atd.</p>
     <p xml:lang="de">Okular ist ein universeller Dokumentenbetrachter, der von KDE entwickelt wird. Okular ist auf mehreren Plattformen verfügbar, darunter auch Linux, Windows, Mac OS X, *BSD usw.</p>
     <p xml:lang="el">Το Okular είναι ένα καθολικό πρόγραμμα προβολής εγγράφων που αναπτύχθηκε από το KDE. Το Okular λειτουργεί σε πολλές πλατφόρμες, συμπεριλαμβανομένων αλλά όχι μόνο των Linux, Windows, Mac OS X, *BSD, κλπ.</p>
-    <p xml:lang="en-GB">Okular is a universal document viewer developed by KDE. Okular works on multiple platforms, including but not limited to Linux, Windows, Mac OS X, *BSD, etc.</p>
+    <p xml:lang="en-GB">Parthicle Reader is a local-first Android document reader based on Okular, the open-source document viewer developed by the KDE community. This independent prototype is not affiliated with, sponsored by, or endorsed by KDE e.V.</p>
     <p xml:lang="eo">Okular estas universala dokumentrigardilo evoluigita de KDE. Okular funkcias sur pluraj platformoj, inkluzive sed ne limigitaj al Linukso, Vindozo, Mac OS X, *BSD, ktp.</p>
     <p xml:lang="es">Okular es un visor universal de documentos desarrollado por KDE. Okular funciona en diversas plataformas, incluidas Linux, Windows, Mac OS X, *BSD, etc.</p>
     <p xml:lang="et">Okular on KDE loodud universaalne dokumendinäitaja. Okular töötab paljudel platvormidel, sealhulgas Linuxil, Windowsis, Mac OS X-is, *BSD-s jne.</p>
@@ -343,7 +346,7 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <caption>Reading manual in Okular</caption>
+      <caption>Reading files in Parthicle Reader</caption>
       <caption xml:lang="ar">قراءة دليل في اوكلار</caption>
       <caption xml:lang="az">Okular'da oxumaq təlimatı</caption>
       <caption xml:lang="be">Дапаможнік па чытанні ў Okular</caption>
@@ -353,7 +356,7 @@
       <caption xml:lang="cs">Čtení manuálu v Okularu</caption>
       <caption xml:lang="de">Lesen eines Handbuchs in Okular</caption>
       <caption xml:lang="el">Ανάγνωση οδηγού χρήσης στο Okular</caption>
-      <caption xml:lang="en-GB">Reading manual in Okular</caption>
+      <caption xml:lang="en-GB">Reading files in Parthicle Reader</caption>
       <caption xml:lang="eo">Legomanlibro en Okular</caption>
       <caption xml:lang="es">Lectura del manual en Okular</caption>
       <caption xml:lang="et">Käsiraamatu lugemine Okularis</caption>
