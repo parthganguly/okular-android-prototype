@@ -6,6 +6,14 @@ Parthicle Reader opens PDFs, EPUBs, comics, images, Markdown, TXT, DjVu, XPS, TI
 
 This is an independent prototype/fork and is not affiliated with or endorsed by KDE.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/parthicle-library.png" alt="Parthicle Reader library showing searchable local reading files" width="260">
+  <img src="docs/screenshots/parthicle-reader-full.png" alt="Parthicle Reader fullscreen scrolling document view" width="260">
+  <img src="docs/screenshots/parthicle-reader-controls.png" alt="Parthicle Reader floating toolbar and page thumbnails" width="260">
+</p>
+
 ## Attribution
 
 Parthicle Reader is based on Okular/KDE and remains open-source under the applicable licenses. See [ATTRIBUTION.md](ATTRIBUTION.md) and the existing license files for details.
