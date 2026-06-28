@@ -10,6 +10,7 @@
 #include <QMimeType>
 #include <QQmlEngine>
 #include <QStringList>
+#include <QTimer>
 #include <QUrlQuery>
 
 #ifdef Q_OS_ANDROID
@@ -224,6 +225,31 @@ void DocumentItem::close()
     Q_EMIT windowTitleForDocumentChanged();
     Q_EMIT bookmarkedPagesChanged();
     Q_EMIT currentPageChanged();
+}
+
+QString DocumentItem::textForPage(int pageNumber)
+{
+    if (!m_document->isOpened() || !m_document->supportsSearching() || pageNumber < 0 || pageNumber >= pageCount()) {
+        return {};
+    }
+
+    const Okular::Page *page = m_document->page(pageNumber);
+    if (!page) {
+        return {};
+    }
+    if (!page->hasTextPage()) {
+        m_document->requestTextPage(static_cast<uint>(pageNumber));
+        page = m_document->page(pageNumber);
+    }
+
+    return page && page->hasTextPage() ? page->text(nullptr).trimmed() : QString();
+}
+
+void DocumentItem::requestTextForPage(int pageNumber)
+{
+    QTimer::singleShot(0, this, [this, pageNumber]() {
+        Q_EMIT pageTextReady(pageNumber, textForPage(pageNumber));
+    });
 }
 
 int DocumentItem::pageCount() const

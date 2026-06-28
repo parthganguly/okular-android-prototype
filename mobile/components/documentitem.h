@@ -151,6 +151,16 @@ public:
     Q_INVOKABLE void close();
 
     /**
+     * Returns extractable text for a page, requesting Okular's text page first when needed.
+     */
+    Q_INVOKABLE QString textForPage(int pageNumber);
+
+    /**
+     * Extracts page text on the next event-loop turn and emits pageTextReady.
+     */
+    Q_INVOKABLE void requestTextForPage(int pageNumber);
+
+    /**
      * Tries to reopen the document with the given password.
      */
     Q_INVOKABLE void setPassword(const QString &password);
@@ -172,6 +182,7 @@ Q_SIGNALS:
     void bookmarkedPagesChanged();
     void bookmarksChanged();
     void windowTitleForDocumentChanged();
+    void pageTextReady(int pageNumber, const QString &text);
 
     /**
      * This signal is emitted whenever an error occurred.

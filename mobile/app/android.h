@@ -54,6 +54,15 @@ public:
     Q_INVOKABLE void shareCurrentDocument();
     Q_INVOKABLE bool deleteCurrentDocument();
     Q_INVOKABLE void clearCurrentDocument();
+    Q_INVOKABLE QString ttsEnginesJson() const;
+    Q_INVOKABLE QString ttsVoicesJson(const QString &enginePackage) const;
+    Q_INVOKABLE bool ttsUseEngine(const QString &enginePackage);
+    Q_INVOKABLE bool ttsSpeak(const QString &text);
+    Q_INVOKABLE void ttsStop();
+    Q_INVOKABLE void ttsSetRate(float rate);
+    Q_INVOKABLE void ttsSetPitch(float pitch);
+    Q_INVOKABLE bool ttsSetVoice(const QString &voiceName);
+    Q_INVOKABLE QString ttsStateJson() const;
 
     void updateLibraryJson(const QString &json)
     {
