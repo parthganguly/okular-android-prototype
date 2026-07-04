@@ -14,6 +14,12 @@ This is an independent prototype/fork and is not affiliated with or endorsed by 
   <img src="docs/screenshots/parthicle-reader-controls.png" alt="Parthicle Reader floating toolbar and page thumbnails" width="260">
 </p>
 
+## Text-to-Speech MVP (v0.3.0)
+
+Parthicle Reader uses Android's built-in `TextToSpeech` service and the speech engines already installed by the user. It does not bundle a voice model or depend on a specific vendor.
+
+The Listen panel can read extractable text from the current document page, select an installed engine or voice, and adjust speech speed. Image-only and scanned pages do not contain extractable text; OCR support is planned separately and is not part of this MVP.
+
 ## Attribution
 
 Parthicle Reader is based on Okular/KDE and remains open-source under the applicable licenses. See [ATTRIBUTION.md](ATTRIBUTION.md) and the existing license files for details.

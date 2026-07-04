@@ -177,6 +177,59 @@ class FileClass
             currentActivity.clearCurrentDocument();
         }
     }
+
+    public static String ttsEnginesJson()
+    {
+        return currentActivity == null ? "[]" : currentActivity.ttsEnginesJson();
+    }
+
+    public static String ttsVoicesJson(String enginePackage)
+    {
+        return currentActivity == null ? "[]" : currentActivity.ttsVoicesJson(enginePackage);
+    }
+
+    public static boolean ttsUseEngine(String enginePackage)
+    {
+        return currentActivity != null && currentActivity.ttsUseEngine(enginePackage);
+    }
+
+    public static boolean ttsSpeak(String text)
+    {
+        return currentActivity != null && currentActivity.ttsSpeak(text);
+    }
+
+    public static void ttsStop()
+    {
+        if (currentActivity != null) {
+            currentActivity.ttsStop();
+        }
+    }
+
+    public static void ttsSetRate(float rate)
+    {
+        if (currentActivity != null) {
+            currentActivity.ttsSetRate(rate);
+        }
+    }
+
+    public static void ttsSetPitch(float pitch)
+    {
+        if (currentActivity != null) {
+            currentActivity.ttsSetPitch(pitch);
+        }
+    }
+
+    public static boolean ttsSetVoice(String voiceName)
+    {
+        return currentActivity != null && currentActivity.ttsSetVoice(voiceName);
+    }
+
+    public static String ttsStateJson()
+    {
+        return currentActivity == null
+                ? "{\"state\":\"unavailable\",\"errorCode\":\"init_failed\",\"message\":\"TTS is not available.\",\"enginePackage\":\"\",\"voiceName\":\"\",\"rate\":1.0,\"pitch\":1.0,\"speaking\":false}"
+                : currentActivity.ttsStateJson();
+    }
 }
 
 public class OpenFileActivity extends QtActivity
@@ -279,6 +332,7 @@ public class OpenFileActivity extends QtActivity
     private String currentDocumentName = "";
     private OnBackInvokedCallback readerBackCallback;
     private boolean readerBackCallbackRegistered = false;
+    private ParthicleTtsController ttsController;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -287,6 +341,7 @@ public class OpenFileActivity extends QtActivity
         prepareFullscreenWindowForQt();
         super.onCreate(savedInstanceState);
         FileClass.setActivity(this);
+        ttsController = new ParthicleTtsController(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             readerBackCallback = () -> handleBackRequest();
             try {
@@ -365,6 +420,10 @@ public class OpenFileActivity extends QtActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && readerBackCallbackRegistered && readerBackCallback != null) {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(readerBackCallback);
             readerBackCallbackRegistered = false;
+        }
+        if (ttsController != null) {
+            ttsController.shutdown();
+            ttsController = null;
         }
         super.onDestroy();
     }
@@ -529,11 +588,65 @@ public class OpenFileActivity extends QtActivity
 
     public void clearCurrentDocument()
     {
+        ttsStop();
         currentDocumentUri = null;
         currentDocumentMimeType = "";
         currentDocumentName = "";
         readerModeEnabled = false;
         applyReaderMode();
+    }
+
+    public String ttsEnginesJson()
+    {
+        return ttsController == null ? "[]" : ttsController.enginesJson();
+    }
+
+    public String ttsVoicesJson(String enginePackage)
+    {
+        return ttsController == null ? "[]" : ttsController.voicesJson(enginePackage);
+    }
+
+    public boolean ttsUseEngine(String enginePackage)
+    {
+        return ttsController != null && ttsController.useEngine(enginePackage);
+    }
+
+    public boolean ttsSpeak(String text)
+    {
+        return ttsController != null && ttsController.speak(text);
+    }
+
+    public void ttsStop()
+    {
+        if (ttsController != null) {
+            ttsController.stop();
+        }
+    }
+
+    public void ttsSetRate(float rate)
+    {
+        if (ttsController != null) {
+            ttsController.setRate(rate);
+        }
+    }
+
+    public void ttsSetPitch(float pitch)
+    {
+        if (ttsController != null) {
+            ttsController.setPitch(pitch);
+        }
+    }
+
+    public boolean ttsSetVoice(String voiceName)
+    {
+        return ttsController != null && ttsController.setVoice(voiceName);
+    }
+
+    public String ttsStateJson()
+    {
+        return ttsController == null
+                ? "{\"state\":\"initializing\",\"errorCode\":\"\",\"message\":\"\",\"enginePackage\":\"\",\"voiceName\":\"\",\"rate\":1.0,\"pitch\":1.0,\"speaking\":false}"
+                : ttsController.stateJson();
     }
 
     private ArrayList<String> libraryStack()
