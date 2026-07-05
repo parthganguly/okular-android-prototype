@@ -1,0 +1,47 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "repomix-parthicle.xml",
+    "style": "xml",
+    "parsableStyle": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "showLineNumbers": true,
+    "topFilesLength": 10
+  },
+  "include": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ATTRIBUTION.md",
+    "CMakeLists.txt",
+    "mobile/app/**/*.{cpp,h,qml,txt}",
+    "mobile/android/**/*.{java,xml,gradle,properties}",
+    "mobile/components/**/*.{cpp,h,qml,txt}",
+    "docs/ai-agent-harness.md",
+    "docs/build/android-kde-docker-notes.md",
+    "docs/release-checklist.md",
+    "scripts/*.ps1"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/build/**",
+      "**/.gradle/**",
+      "**/CraftRoot/**",
+      "**/*.apk",
+      "**/*.aab",
+      "**/*.jks",
+      "**/*.keystore",
+      "**/*.pem",
+      "**/*.p12",
+      "**/*.env*",
+      "**/repomix-*.xml"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}
