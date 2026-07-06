@@ -70,7 +70,7 @@ Kirigami.Page {
         }
     }
 
-    function refreshTtsData() {
+    function refreshTtsState() {
         if (typeof uriHandler === "undefined") {
             root.ttsState = "unavailable"
             root.ttsErrorCode = "init_failed"
@@ -91,7 +91,14 @@ Kirigami.Page {
             root.ttsState = "unavailable"
             root.ttsErrorCode = "init_failed"
         }
+    }
 
+    function refreshTtsDiscovery() {
+        if (typeof uriHandler === "undefined") {
+            root.ttsEngines = []
+            root.ttsVoices = []
+            return
+        }
         root.ttsEngines = root.parseJsonArray(uriHandler.ttsEnginesJson())
         if (!root.ttsEnginePackage && root.ttsEngines.length > 0) {
             for (let i = 0; i < root.ttsEngines.length; ++i) {
@@ -102,6 +109,11 @@ Kirigami.Page {
             }
         }
         root.ttsVoices = root.parseJsonArray(uriHandler.ttsVoicesJson(root.ttsEnginePackage))
+    }
+
+    function refreshTtsData() {
+        root.refreshTtsState()
+        root.refreshTtsDiscovery()
     }
 
     function ttsEngineIndex() {
@@ -854,7 +866,15 @@ Kirigami.Page {
         interval: 400
         repeat: true
         running: ttsPanel.visible
-        onTriggered: root.refreshTtsData()
+        onTriggered: {
+            const previousState = root.ttsState
+            const previousEngine = root.ttsEnginePackage
+            root.refreshTtsState()
+            if ((previousState === "initializing" && root.ttsState !== "initializing")
+                    || previousEngine !== root.ttsEnginePackage) {
+                root.refreshTtsDiscovery()
+            }
+        }
     }
 
     QQC2.Dialog {
