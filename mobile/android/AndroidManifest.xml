@@ -16,6 +16,7 @@
                   android:label="Parthicle Reader"
                   android:hardwareAccelerated="true"
                   android:enableOnBackInvokedCallback="true"
+                  android:launchMode="singleTask"
                   android:screenOrientation="unspecified"
                   android:exported="true">
 

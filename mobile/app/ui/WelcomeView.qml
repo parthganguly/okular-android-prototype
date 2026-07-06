@@ -507,26 +507,6 @@ Item {
                         }
                     }
 
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                        }
-                        height: Math.max(4, Math.round(Kirigami.Units.smallSpacing * 0.55))
-                        color: Qt.rgba(1, 1, 1, 0.22)
-
-                        Rectangle {
-                            anchors {
-                                left: parent.left
-                                top: parent.top
-                                bottom: parent.bottom
-                            }
-                            width: parent.width * 0.44
-                            color: welcomeView.primaryAccentColor
-                        }
-                    }
-
                     Controls.Label {
                         anchors {
                             left: parent.left

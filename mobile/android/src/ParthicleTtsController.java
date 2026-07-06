@@ -24,10 +24,14 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 final class ParthicleTtsController
 {
@@ -36,7 +40,11 @@ final class ParthicleTtsController
 
     private final Context applicationContext;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService discoveryExecutor = Executors.newSingleThreadExecutor();
     private final Set<String> pendingUtterances = new HashSet<>();
+    private final Set<String> unavailableEnginePackages = new HashSet<>();
+    private final List<Voice> cachedVoices = new ArrayList<>();
+    private final Map<String, Voice> cachedVoicesByName = new HashMap<>();
 
     private TextToSpeech textToSpeech;
     private int engineGeneration = 0;
@@ -50,6 +58,8 @@ final class ParthicleTtsController
     private float speechRate = 1.0f;
     private float speechPitch = 1.0f;
     private boolean speaking = false;
+    private String cachedEnginesJson = "[]";
+    private String cachedVoicesJson = "[]";
 
     ParthicleTtsController(Context context)
     {
@@ -59,100 +69,43 @@ final class ParthicleTtsController
 
     synchronized String enginesJson()
     {
-        final JSONArray result = new JSONArray();
-        final TextToSpeech current = textToSpeech;
-        if (current == null) {
-            return result.toString();
-        }
-
-        try {
-            final String defaultEngine = current.getDefaultEngine();
-            final List<TextToSpeech.EngineInfo> engines = new ArrayList<>(current.getEngines());
-            Collections.sort(engines, Comparator.comparing(engine -> safeString(engine.label), String.CASE_INSENSITIVE_ORDER));
-            for (TextToSpeech.EngineInfo engine : engines) {
-                final JSONObject item = new JSONObject();
-                item.put("package", safeString(engine.name));
-                item.put("label", safeString(engine.label).isEmpty() ? safeString(engine.name) : safeString(engine.label));
-                item.put("isDefault", safeString(engine.name).equals(defaultEngine));
-                item.put("selected", safeString(engine.name).equals(activeEnginePackage));
-                result.put(item);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Cannot list Android TTS engines", e);
-        }
-        return result.toString();
+        return cachedEnginesJson;
     }
 
-    String voicesJson(String enginePackage)
+    synchronized String voicesJson(String enginePackage)
     {
         final String requested = safeString(enginePackage);
-        synchronized (this) {
-            if (!requested.isEmpty() && !requested.equals(activeEnginePackage)) {
-                if (!requested.equals(requestedEnginePackage)) {
-                    useEngine(requested);
-                }
-                return "[]";
-            }
+        if (!requested.isEmpty() && !requested.equals(activeEnginePackage)) {
+            return "[]";
         }
-
-        final JSONArray result = new JSONArray();
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return result.toString();
-        }
-
-        final TextToSpeech current;
-        synchronized (this) {
-            current = textToSpeech;
-            if (current == null || !"ready".equals(state) && !"speaking".equals(state)) {
-                return result.toString();
-            }
-        }
-
-        try {
-            final Set<Voice> availableVoices = current.getVoices();
-            if (availableVoices == null) {
-                return result.toString();
-            }
-            final List<Voice> voices = new ArrayList<>(availableVoices);
-            Collections.sort(voices, Comparator.comparing(ParthicleTtsController::voiceLabel, String.CASE_INSENSITIVE_ORDER));
-            final Voice currentVoice = current.getVoice();
-            for (Voice voice : voices) {
-                final JSONObject item = new JSONObject();
-                item.put("name", voice.getName());
-                item.put("label", voiceLabel(voice));
-                item.put("locale", voice.getLocale() == null ? "" : voice.getLocale().toLanguageTag());
-                item.put("quality", voice.getQuality());
-                item.put("latency", voice.getLatency());
-                item.put("networkRequired", voice.isNetworkConnectionRequired());
-                item.put("selected", voice.getName().equals(selectedVoiceName) || selectedVoiceName.isEmpty() && voice.equals(currentVoice));
-                final JSONArray features = new JSONArray();
-                if (voice.getFeatures() != null) {
-                    for (String feature : voice.getFeatures()) {
-                        features.put(feature);
-                    }
-                }
-                item.put("features", features);
-                result.put(item);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Cannot list Android TTS voices", e);
-        }
-        return result.toString();
+        return cachedVoicesJson;
     }
 
     boolean useEngine(String enginePackage)
     {
         final String requested = safeString(enginePackage);
         synchronized (this) {
+            if (!requested.isEmpty() && unavailableEnginePackages.contains(requested)) {
+                state = "error";
+                errorCode = "engine_unavailable";
+                statusMessage = "That TTS engine is unavailable to Parthicle Reader in this session.";
+                speaking = false;
+                return false;
+            }
             if (requested.equals(activeEnginePackage) && ("ready".equals(state) || "speaking".equals(state))) {
                 return true;
             }
             requestedEnginePackage = requested;
+            activeEnginePackage = "";
+            selectedVoiceName = "";
             state = "initializing";
             errorCode = "";
             statusMessage = "";
             speaking = false;
             pendingUtterances.clear();
+            cachedVoices.clear();
+            cachedVoicesByName.clear();
+            cachedVoicesJson = "[]";
         }
         mainHandler.post(() -> initializeEngineOnMain(requested));
         return true;
@@ -264,6 +217,10 @@ final class ParthicleTtsController
             current = textToSpeech;
             textToSpeech = null;
             pendingUtterances.clear();
+            cachedVoices.clear();
+            cachedVoicesByName.clear();
+            cachedVoicesJson = "[]";
+            cachedEnginesJson = "[]";
             speaking = false;
             state = "unavailable";
         }
@@ -273,6 +230,7 @@ final class ParthicleTtsController
                 current.shutdown();
             });
         }
+        discoveryExecutor.shutdownNow();
     }
 
     private void initializeEngineOnMain(String enginePackage)
@@ -288,6 +246,9 @@ final class ParthicleTtsController
             errorCode = "";
             statusMessage = "";
             requestedEnginePackage = safeString(enginePackage);
+            cachedVoices.clear();
+            cachedVoicesByName.clear();
+            cachedVoicesJson = "[]";
             generation = ++engineGeneration;
         }
 
@@ -317,16 +278,29 @@ final class ParthicleTtsController
     private void finishInitialization(int generation, int status)
     {
         final TextToSpeech current;
+        final String requested;
         synchronized (this) {
             if (generation != engineGeneration) {
                 return;
             }
             current = textToSpeech;
+            requested = requestedEnginePackage;
         }
 
         if (status != TextToSpeech.SUCCESS || current == null) {
-            final boolean noEngines = current == null || current.getEngines() == null || current.getEngines().isEmpty();
-            setError(noEngines ? "no_engine" : "init_failed", noEngines ? "No TTS engine installed." : "TTS engine failed to initialize.");
+            if (!requested.isEmpty()) {
+                synchronized (this) {
+                    if (generation != engineGeneration) {
+                        return;
+                    }
+                    unavailableEnginePackages.add(requested);
+                }
+                Log.w(TAG, "TTS engine is unavailable for this session: " + requested + "; falling back to the default engine");
+                initializeEngineOnMain("");
+                return;
+            }
+            setError(current == null ? "no_engine" : "init_failed",
+                    current == null ? "No TTS engine installed." : "TTS engine failed to initialize.");
             return;
         }
 
@@ -364,23 +338,7 @@ final class ParthicleTtsController
 
         current.setSpeechRate(speechRate);
         current.setPitch(speechPitch);
-        final String defaultEngine = current.getDefaultEngine();
-        synchronized (this) {
-            activeEnginePackage = requestedEnginePackage.isEmpty() ? safeString(defaultEngine) : requestedEnginePackage;
-            state = "ready";
-            errorCode = "";
-            statusMessage = "";
-            final Voice currentVoice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? current.getVoice() : null;
-            selectedVoiceName = currentVoice == null ? "" : currentVoice.getName();
-        }
-
-        final int languageStatus = current.isLanguageAvailable(Locale.getDefault());
-        if (languageStatus == TextToSpeech.LANG_MISSING_DATA) {
-            synchronized (this) {
-                errorCode = "missing_voice_data";
-                statusMessage = "Voice data missing; install voice data in Android TTS settings.";
-            }
-        }
+        discoveryExecutor.execute(() -> refreshDiscoveryCache(generation, current));
     }
 
     private void speakOnMain(int generation, List<String> chunks)
@@ -393,13 +351,14 @@ final class ParthicleTtsController
             }
             current = textToSpeech;
             sequence = ++utteranceSequence;
-            current.stop();
             pendingUtterances.clear();
             speaking = true;
             state = "speaking";
             errorCode = "";
             statusMessage = "";
         }
+
+        current.stop();
 
         for (int i = 0; i < chunks.size(); ++i) {
             final String utteranceId = "parthicle-" + sequence + "-" + i;
@@ -439,33 +398,162 @@ final class ParthicleTtsController
     private void setVoiceOnMain(int generation, String voiceName)
     {
         final TextToSpeech current;
+        final Voice requestedVoice;
         synchronized (this) {
             if (generation != engineGeneration) {
                 return;
             }
             current = textToSpeech;
+            requestedVoice = cachedVoicesByName.get(voiceName);
         }
-        if (current == null || current.getVoices() == null) {
+        if (current == null || requestedVoice == null) {
             setError("missing_voice_data", "Voice data missing; install voice data in Android TTS settings.");
             return;
         }
 
-        for (Voice voice : current.getVoices()) {
-            if (voice.getName().equals(voiceName)) {
-                if (current.setVoice(voice) == TextToSpeech.SUCCESS) {
-                    synchronized (this) {
-                        selectedVoiceName = voiceName;
-                        state = "ready";
-                        errorCode = "";
-                        statusMessage = "";
-                    }
-                } else {
-                    setError("missing_voice_data", "Voice data missing; install voice data in Android TTS settings.");
+        if (current.setVoice(requestedVoice) == TextToSpeech.SUCCESS) {
+            synchronized (this) {
+                if (generation != engineGeneration) {
+                    return;
                 }
-                return;
+                selectedVoiceName = voiceName;
+                state = "ready";
+                errorCode = "";
+                statusMessage = "";
+                cachedVoicesJson = buildVoicesJson(cachedVoices, requestedVoice, selectedVoiceName);
+            }
+        } else {
+            setError("missing_voice_data", "Voice data missing; install voice data in Android TTS settings.");
+        }
+    }
+
+    private void refreshDiscoveryCache(int generation, TextToSpeech current)
+    {
+        final List<TextToSpeech.EngineInfo> engines = new ArrayList<>();
+        final List<Voice> voices = new ArrayList<>();
+        final String defaultEngine;
+        final Voice currentVoice;
+        final int languageStatus;
+
+        try {
+            defaultEngine = safeString(current.getDefaultEngine());
+            currentVoice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? current.getVoice() : null;
+            languageStatus = current.isLanguageAvailable(Locale.getDefault());
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot read Android TTS defaults", e);
+            setError("init_failed", "TTS engine failed to initialize.");
+            return;
+        }
+
+        try {
+            final List<TextToSpeech.EngineInfo> availableEngines = current.getEngines();
+            if (availableEngines != null) {
+                engines.addAll(availableEngines);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Cannot list Android TTS engines", e);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                final Set<Voice> availableVoices = current.getVoices();
+                if (availableVoices != null) {
+                    voices.addAll(availableVoices);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Cannot list Android TTS voices", e);
             }
         }
-        setError("missing_voice_data", "Voice data missing; install voice data in Android TTS settings.");
+
+        Collections.sort(engines, Comparator.comparing(engine -> safeString(engine.label), String.CASE_INSENSITIVE_ORDER));
+        Collections.sort(voices, Comparator.comparing(ParthicleTtsController::voiceLabel, String.CASE_INSENSITIVE_ORDER));
+
+        synchronized (this) {
+            if (generation != engineGeneration || current != textToSpeech) {
+                return;
+            }
+            activeEnginePackage = requestedEnginePackage.isEmpty() ? defaultEngine : requestedEnginePackage;
+            selectedVoiceName = currentVoice == null ? "" : currentVoice.getName();
+            cachedEnginesJson = buildEnginesJson(engines, defaultEngine, activeEnginePackage, unavailableEnginePackages);
+            cachedVoices.clear();
+            cachedVoices.addAll(voices);
+            cachedVoicesByName.clear();
+            for (Voice voice : voices) {
+                cachedVoicesByName.put(voice.getName(), voice);
+            }
+            cachedVoicesJson = buildVoicesJson(cachedVoices, currentVoice, selectedVoiceName);
+            state = "ready";
+            if (languageStatus == TextToSpeech.LANG_MISSING_DATA) {
+                errorCode = "missing_voice_data";
+                statusMessage = "Voice data missing; install voice data in Android TTS settings.";
+            } else {
+                errorCode = "";
+                statusMessage = "";
+            }
+        }
+    }
+
+    private static String buildEnginesJson(List<TextToSpeech.EngineInfo> engines, String defaultEngine,
+            String selectedEngine, Set<String> unavailableEngines)
+    {
+        final JSONArray result = new JSONArray();
+        boolean selectedEngineIncluded = false;
+        for (TextToSpeech.EngineInfo engine : engines) {
+            final String packageName = safeString(engine.name);
+            if (packageName.isEmpty() || unavailableEngines.contains(packageName)) {
+                continue;
+            }
+            try {
+                final JSONObject item = new JSONObject();
+                item.put("package", packageName);
+                item.put("label", safeString(engine.label).isEmpty() ? packageName : safeString(engine.label));
+                item.put("isDefault", packageName.equals(defaultEngine));
+                item.put("selected", packageName.equals(selectedEngine));
+                result.put(item);
+                selectedEngineIncluded |= packageName.equals(selectedEngine);
+            } catch (JSONException ignored) {
+            }
+        }
+        if (!selectedEngineIncluded && !selectedEngine.isEmpty() && !unavailableEngines.contains(selectedEngine)) {
+            try {
+                final JSONObject item = new JSONObject();
+                item.put("package", selectedEngine);
+                item.put("label", selectedEngine);
+                item.put("isDefault", selectedEngine.equals(defaultEngine));
+                item.put("selected", true);
+                result.put(item);
+            } catch (JSONException ignored) {
+            }
+        }
+        return result.toString();
+    }
+
+    private static String buildVoicesJson(List<Voice> voices, Voice currentVoice, String selectedVoiceName)
+    {
+        final JSONArray result = new JSONArray();
+        for (Voice voice : voices) {
+            try {
+                final JSONObject item = new JSONObject();
+                item.put("name", voice.getName());
+                item.put("label", voiceLabel(voice));
+                item.put("locale", voice.getLocale() == null ? "" : voice.getLocale().toLanguageTag());
+                item.put("quality", voice.getQuality());
+                item.put("latency", voice.getLatency());
+                item.put("networkRequired", voice.isNetworkConnectionRequired());
+                item.put("selected", voice.getName().equals(selectedVoiceName)
+                        || selectedVoiceName.isEmpty() && voice.equals(currentVoice));
+                final JSONArray features = new JSONArray();
+                if (voice.getFeatures() != null) {
+                    for (String feature : voice.getFeatures()) {
+                        features.put(feature);
+                    }
+                }
+                item.put("features", features);
+                result.put(item);
+            } catch (JSONException ignored) {
+            }
+        }
+        return result.toString();
     }
 
     private synchronized void completeUtterance(int generation, String utteranceId, boolean failed)

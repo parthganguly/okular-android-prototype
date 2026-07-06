@@ -142,7 +142,9 @@ void Java_org_kde_something_FileClass_openUri(JNIEnv *env, jobject /*obj*/, jstr
     jboolean isCopy = false;
     const char *utf = env->GetStringUTFChars(uri, &isCopy);
     const QString uriString = QString::fromUtf8(utf);
-    URIHandler::handler.openUri(uriString);
+    QMetaObject::invokeMethod(&URIHandler::handler, [uriString]() {
+        URIHandler::handler.openUri(uriString);
+    }, Qt::QueuedConnection);
     env->ReleaseStringUTFChars(uri, utf);
 }
 

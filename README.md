@@ -2,7 +2,7 @@
 
 A local-first Android document reader based on Okular/KDE - built to be the MX Player for reading files.
 
-Parthicle Reader opens PDFs, EPUBs, comics, images, Markdown, TXT, DjVu, XPS, TIFF, and other supported document formats.
+Parthicle Reader opens PDFs, EPUBs, comics, images, TXT, DjVu, XPS, TIFF, and other supported document formats. Markdown files open as readable raw text; rich Markdown rendering is not active yet.
 
 This is an independent prototype/fork and is not affiliated with or endorsed by KDE.
 

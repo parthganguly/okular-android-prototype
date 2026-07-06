@@ -555,7 +555,7 @@ public class OpenFileActivity extends QtActivity
     public boolean deleteCurrentDocument()
     {
         if (currentDocumentUri == null) {
-            Toast.makeText(this, "No open document to delete", Toast.LENGTH_SHORT).show();
+            showToast("No open document to delete");
             return false;
         }
 
@@ -573,7 +573,7 @@ public class OpenFileActivity extends QtActivity
         }
 
         if (!deleted) {
-            Toast.makeText(this, "Could not delete this document", Toast.LENGTH_SHORT).show();
+            showToast("Could not delete this document");
             return false;
         }
 
@@ -582,8 +582,13 @@ public class OpenFileActivity extends QtActivity
         currentDocumentMimeType = "";
         currentDocumentName = "";
         publishLibrary();
-        Toast.makeText(this, "Document deleted", Toast.LENGTH_SHORT).show();
+        showToast("Document deleted");
         return true;
+    }
+
+    private void showToast(String message)
+    {
+        runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
     }
 
     public void clearCurrentDocument()

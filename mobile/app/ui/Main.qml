@@ -143,14 +143,26 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    function openRequestedUri(openedUri) {
+        if (!openedUri) {
+            return
+        }
+        fileBrowserRoot.controlsVisible = false
+        contextDrawer.drawerOpen = false
+        mainView.moreActionsVisible = false
+        mainView.stopTts()
+        if (documentItem.opened) {
+            documentItem.close()
+        }
+        documentItem.url = openedUri
+    }
+
     Component.onCompleted: openInitialUri()
 
     Connections {
         target: typeof uriHandler !== "undefined" ? uriHandler : null
         function onOpenRequested(openedUri) {
-            if (openedUri) {
-                documentItem.url = openedUri
-            }
+            fileBrowserRoot.openRequestedUri(openedUri)
         }
         function onCloseRequested() {
             if (documentItem.opened) {
