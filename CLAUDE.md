@@ -1,9 +1,12 @@
+@AGENTS.md
+
 # Claude Code instructions for Parthicle Reader
 
-Follow `AGENTS.md` as the repository policy. This file adds Claude Code routing and hook behavior.
+This file adds Claude Code routing and hook behavior to the repository policy imported above.
 
 ## Route work to the narrow tool
 
+- Head-to-toe product, architecture, UX, accessibility, roadmap, or harness review: use `/parthicle-full-review` with Fable selected.
 - Android/KDE/Craft failure: use `/parthicle-build-diagnose` or the `parthicle-build-doctor` agent.
 - Java/C++/QML or TTS boundary change: use `/parthicle-bridge-change` and request the `parthicle-bridge-reviewer` agent before claiming completion.
 - Attribution, SPDX, or dependency license work: use `/parthicle-license-check` or the `parthicle-license-cop` agent.
