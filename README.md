@@ -1,8 +1,17 @@
 # Parthicle Reader
 
-A local-first Android document reader based on Okular/KDE - built to be the MX Player for reading files.
+**Local-first Android document reader built on Okular/KDE, Qt 6 and Kirigami — designed as a full multi-format reading application rather than a thin PDF viewer.**
 
-Parthicle Reader opens PDFs, EPUBs, comics, images, TXT, DjVu, XPS, TIFF, and other supported document formats. Markdown files open as readable raw text; rich Markdown rendering is not active yet.
+Parthicle Reader opens PDFs, EPUBs, comics, images, TXT, DjVu, XPS, TIFF and other Okular-supported document formats. It keeps the mature Okular document model while adapting the mobile experience for Android, including library browsing, thumbnails, document controls and system text-to-speech.
+
+## Engineering snapshot
+
+- **Platform:** Android · Qt 6 · KDE Frameworks · Kirigami/QML · C++ · Java.
+- **Document engine:** built on Okular's multi-format backend rather than a single-format Android reader.
+- **Native bridge:** Java ↔ JNI/C++ ↔ QML integration for Android services and document handling.
+- **Text-to-speech:** Android `TextToSpeech` integration with installed engine/voice selection, speed control and lifecycle-aware shutdown.
+- **QA:** physical-device/runtime QA, bridge verification, APK inspection and dedicated release hardening.
+- **Product status:** working Android prototype with v0.3.x runtime hardening and a documented long-horizon roadmap.
 
 This is an independent prototype/fork and is not affiliated with or endorsed by KDE.
 
